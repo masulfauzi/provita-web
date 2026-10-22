@@ -1,59 +1,133 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Bank Provita
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi Bank Mini SMK Negeri 2 Semarang, pengganti workbook Excel `Aplikasi_Bank_Mini_SMKN_2_SEMARANG.xlsb`.
 
-## About Laravel
+| Lapisan | Teknologi |
+| --- | --- |
+| Backend | Laravel 12, modular di `app/Http/Modules` |
+| Frontend panel petugas | Inertia.js v3 + Vue 3 (`<script setup>`, JavaScript) |
+| Komponen UI | PrimeVue 4 (tema Aura) + Tailwind CSS v4 |
+| Database | MySQL 8 / MariaDB 10.4+ |
+| Auth & hak akses | Laravel Sanctum + spatie/laravel-permission |
+| Audit & backup | spatie/laravel-activitylog, spatie/laravel-backup |
+| Testing & gaya kode | Pest, Laravel Pint, ESLint, Prettier |
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Kebutuhan sistem
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- PHP 8.2+ dengan ekstensi `bcmath`, `intl`, `pdo_mysql`, `zip`
+- Composer 2
+- Node.js 20+ dan npm
+- MySQL 8 atau MariaDB 10.4+ (mis. XAMPP), serta `mysqldump` untuk backup
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Setup lokal
 
-## Learning Laravel
+```bash
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Lalu edit `.env`:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- `DB_*`: koneksi database (buat dulu database `bank_provita` dengan utf8mb4).
+- `SEED_BENDAHARA_PASSWORD` dan `SEED_TELLER_PASSWORD`: kata sandi akun awal (wajib, tidak ada default di kode).
+- `DB_DUMP_BINARY_PATH`: folder berisi `mysqldump`, mis. `/Applications/XAMPP/xamppfiles/bin`.
 
-## Laravel Sponsors
+```bash
+php artisan migrate --seed
+composer run dev          # server Laravel + queue + log + Vite
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller` (atau sesuai `SEED_*_USERNAME`).
 
-### Premium Partners
+## Peran
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Peran | Akses |
+| --- | --- |
+| `bendahara` | Semua menu. Otomatis mendapat setiap permission baru. |
+| `teller` | Setoran, penarikan, penutupan, buku tabungan, laporan harian kas (halamannya menyusul di issue modul); pengaturan hanya tanggal transaksi & uang modal. |
+| `admin` | Kelola pengguna dan pengaturan umum/teknis. |
 
-## Contributing
+Peran & permission dideklarasikan di `config/permissions.php` dan `module.json` tiap modul, lalu disinkronkan dengan `php artisan permission:sync-modules`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Perintah penting
 
-## Code of Conduct
+| Perintah | Fungsi |
+| --- | --- |
+| `composer run dev` | Server pengembangan (serve + queue + pail + vite) |
+| `vendor/bin/pest` | Semua test (SQLite in-memory) |
+| `TEST_MYSQL_DATABASE=bank_provita_test vendor/bin/pest --group=mysql` | Test row lock dua penarikan bersamaan di MySQL (database akan dikosongkan) |
+| `vendor/bin/pint` | Merapikan kode PHP |
+| `npm run lint` / `npm run format` | ESLint / Prettier untuk Vue & JS |
+| `npm run build` | Build aset produksi |
+| `php artisan make:module Nama --menu [--api]` | Membuat modul baru |
+| `php artisan permission:sync-modules [--prune]` | Sinkronisasi role & permission |
+| `php artisan saldo:rekonsiliasi [--fix]` | Cek/perbaiki saldo rekening dari saldo awal + mutasi |
+| `php artisan backup:run --only-db` | Backup database manual |
+| `php artisan schedule:list` | Daftar jadwal |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Struktur folder
 
-## Security Vulnerabilities
+```
+app/
+├── Console/Commands/          # make:module, permission:sync-modules
+├── Http/
+│   ├── Controllers/           # auth, dashboard, profil (non-modul)
+│   ├── Middleware/HandleInertiaRequests.php
+│   └── Modules/               # satu folder per modul (lihat docs/modules.md)
+│       ├── Pengaturan/        # modul contoh lengkap (key-value, setara sheet M)
+│       ├── Pengguna/
+│       ├── LogAktivitas/
+│       ├── Rekening/  Transaksi/   # fondasi transaksi keuangan
+│       └── Pinjaman/  Laporan/     # kerangka, diisi di issue berikutnya
+├── Jobs/                      # HitungBungaBulanan, CekJatuhTempoDeposito
+├── Providers/ModuleServiceProvider.php
+└── Support/
+    ├── Money.php              # aritmetika uang (bcmath)
+    ├── Finance/               # FinancialTransaction (lock), Immutable
+    └── Modules/               # ModuleRegistry
+resources/js/
+├── Components/                # MoneyInput, MoneyText, DateText, PageHeader, ConfirmDelete
+├── Layouts/                   # AppLayout, GuestLayout
+├── Pages/                     # halaman non-modul
+├── composables/usePermission.js
+├── locale/id.js               # locale PrimeVue Bahasa Indonesia
+└── utils/format.js            # rupiah(), tanggal(), terbilang()
+stubs/module/                  # stub generator make:module
+docs/modules.md                # konvensi modul
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Cara membuat modul baru, aturan penamaan, dan aturan uang & transaksi ada di **[docs/modules.md](docs/modules.md)**.
 
-## License
+## Deploy di VPS
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. `composer install --no-dev --optimize-autoloader && npm ci && npm run build`
+2. `php artisan migrate --force && php artisan permission:sync-modules`
+3. `php artisan config:cache && php artisan route:cache && php artisan view:cache`
+
+**Scheduler** (backup harian 01:30, retensi 14 hari, cek jatuh tempo, bunga bulanan), satu baris cron:
+
+```cron
+* * * * * cd /var/www/bank-provita && php artisan schedule:run >> /dev/null 2>&1
+```
+
+**Queue** (driver `database`) dengan Supervisor, `/etc/supervisor/conf.d/bank-provita-worker.conf`:
+
+```ini
+[program:bank-provita-worker]
+command=php /var/www/bank-provita/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/bank-provita/storage/logs/worker.log
+stopwaitsecs=3600
+```
+
+Setelah deploy ulang, jalankan `php artisan queue:restart`.
+
+**Backup** disimpan di `storage/app/private/bank-provita`. Bila backup gagal, notifikasi dikirim ke `BACKUP_NOTIFY_EMAIL` (atur juga `MAIL_*`). Untuk enkripsi arsip, isi `BACKUP_ARCHIVE_PASSWORD`.

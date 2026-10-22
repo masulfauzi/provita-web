@@ -1,0 +1,12 @@
+{
+    "name": "Transaksi",
+    "label": "Transaksi",
+    "icon": "pi pi-arrow-right-arrow-left",
+    "order": 210,
+    "menu": [],
+    "permissions": {
+        "transaksi.setor": { "label": "Setoran tabungan", "roles": ["teller"] },
+        "transaksi.tarik": { "label": "Penarikan tabungan", "roles": ["teller"] },
+        "transaksi.balik": { "label": "Membuat transaksi pembalik (koreksi)", "roles": [] }
+    }
+}

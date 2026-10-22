@@ -1,0 +1,12 @@
+{
+    "name": "Rekening",
+    "label": "Rekening",
+    "icon": "pi pi-book",
+    "order": 200,
+    "menu": [],
+    "permissions": {
+        "rekening.lihat": { "label": "Lihat rekening & buku tabungan", "roles": ["teller"] },
+        "rekening.buka": { "label": "Membuka rekening", "roles": [] },
+        "rekening.tutup": { "label": "Menutup rekening", "roles": ["teller"] }
+    }
+}

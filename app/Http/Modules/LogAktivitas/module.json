@@ -1,0 +1,12 @@
+{
+    "name": "LogAktivitas",
+    "label": "Log aktivitas",
+    "icon": "pi pi-history",
+    "order": 920,
+    "menu": [
+        { "label": "Log aktivitas", "route": "log-aktivitas.index", "permission": "log_aktivitas.lihat", "group": "Sistem" }
+    ],
+    "permissions": {
+        "log_aktivitas.lihat": { "label": "Lihat log aktivitas", "roles": [] }
+    }
+}
