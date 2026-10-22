@@ -1,0 +1,70 @@
+<?php
+
+namespace App\Http\Modules\Nasabah\Models;
+
+use App\Http\Modules\Nasabah\Database\Factories\NasabahFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+
+/**
+ * @property string $nomor
+ * @property bool $is_active
+ */
+class Nasabah extends Model
+{
+    /** @use HasFactory<NasabahFactory> */
+    use HasFactory, HasUuids, LogsActivity;
+
+    public const JENIS = [
+        'siswa' => 'Siswa',
+        'guru' => 'Guru',
+        'karyawan' => 'Karyawan',
+    ];
+
+    public const JENIS_KELAMIN = [
+        'L' => 'Laki-laki',
+        'P' => 'Perempuan',
+    ];
+
+    protected $table = 'nasabah';
+
+    protected $fillable = [
+        'nis',
+        'nama',
+        'jenis',
+        'jenis_kelamin',
+        'kelas',
+        'tempat_lahir',
+        'tanggal_lahir',
+        'alamat',
+        'no_hp',
+        'nama_orang_tua',
+        'is_active',
+        'keterangan',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'tanggal_lahir' => 'date:Y-m-d',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    protected static function newFactory(): NasabahFactory
+    {
+        return NasabahFactory::new();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('nasabah')
+            ->logOnly(['nomor', ...$this->fillable])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
+    }
+}

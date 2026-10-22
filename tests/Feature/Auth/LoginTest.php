@@ -51,7 +51,9 @@ it('membatasi percobaan login berulang', function () {
     }
 
     $this->post('/login', ['username' => 'teller1', 'password' => 'password'])
-        ->assertSessionHasErrors(['username' => __('auth.throttle', ['seconds' => 60, 'minutes' => 1])]);
+        ->assertSessionHasErrors('username');
+
+    expect(session('errors')->first('username'))->toStartWith('Terlalu banyak percobaan masuk');
 
     $this->assertGuest();
 });
