@@ -1,0 +1,18 @@
+{
+    "name": "Pengguna",
+    "label": "Pengguna",
+    "icon": "pi pi-user-edit",
+    "order": 910,
+    "menu": [
+        { "label": "Pengguna", "route": "pengguna.index", "permission": "pengguna.lihat", "group": "Sistem" }
+    ],
+    "permissions": {
+        "pengguna.lihat": { "label": "Lihat pengguna", "roles": ["admin"] },
+        "pengguna.tambah": { "label": "Tambah pengguna", "roles": ["admin"] },
+        "pengguna.ubah": { "label": "Ubah pengguna, peran & status aktif", "roles": ["admin"] },
+        "pengguna.reset_password": { "label": "Reset kata sandi pengguna", "roles": ["admin"] }
+    },
+    "policies": {
+        "App\\Models\\User": "App\\Http\\Modules\\Pengguna\\Policies\\PenggunaPolicy"
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "name": "Laporan",
+    "label": "Laporan",
+    "icon": "pi pi-chart-bar",
+    "order": 500,
+    "menu": [
+        { "label": "Laporan keuangan", "route": "laporan.index", "permission": "laporan.keuangan", "group": "Laporan" }
+    ],
+    "permissions": {
+        "laporan.keuangan": { "label": "Lihat laporan keuangan", "roles": [] },
+        "laporan.neraca": { "label": "Lihat neraca", "roles": [] },
+        "laporan.laba_rugi": { "label": "Lihat laba rugi", "roles": [] },
+        "laporan.harian": { "label": "Lihat laporan harian kas", "roles": ["teller"] }
+    }
+}

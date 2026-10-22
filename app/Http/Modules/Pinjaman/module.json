@@ -1,0 +1,14 @@
+{
+    "name": "Pinjaman",
+    "label": "Pinjaman",
+    "icon": "pi pi-money-bill",
+    "order": 300,
+    "menu": [
+        { "label": "Pinjaman", "route": "pinjaman.index", "permission": "pinjaman.lihat", "group": "Keuangan" }
+    ],
+    "permissions": {
+        "pinjaman.lihat": { "label": "Lihat pinjaman", "roles": [] },
+        "pinjaman.akad": { "label": "Membuat akad pinjaman", "roles": [] },
+        "pinjaman.angsuran": { "label": "Menerima angsuran pinjaman", "roles": [] }
+    }
+}
