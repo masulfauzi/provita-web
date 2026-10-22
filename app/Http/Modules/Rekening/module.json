@@ -3,10 +3,12 @@
     "label": "Rekening",
     "icon": "pi pi-book",
     "order": 200,
-    "menu": [],
+    "menu": [
+        { "label": "Rekening", "route": "rekening.index", "permission": "rekening.lihat", "group": "Tabungan", "order": 201 }
+    ],
     "permissions": {
         "rekening.lihat": { "label": "Lihat rekening & buku tabungan", "roles": ["teller"] },
-        "rekening.buka": { "label": "Membuka rekening", "roles": [] },
+        "rekening.buka": { "label": "Membuka rekening", "roles": ["teller"] },
         "rekening.tutup": { "label": "Menutup rekening", "roles": ["teller"] }
     }
 }

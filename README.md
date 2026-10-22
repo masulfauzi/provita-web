@@ -79,7 +79,9 @@ app/
 │       ├── Pengaturan/        # modul contoh lengkap (key-value, setara sheet M)
 │       ├── Pengguna/
 │       ├── LogAktivitas/
-│       ├── Rekening/  Transaksi/   # fondasi transaksi keuangan
+│       ├── Nasabah/
+│       ├── Rekening/              # buka/tutup rekening, buku tabungan
+│       ├── Transaksi/             # setor, tarik, koreksi (pembalik)
 │       └── Pinjaman/  Laporan/     # kerangka, diisi di issue berikutnya
 ├── Jobs/                      # HitungBungaBulanan, CekJatuhTempoDeposito
 ├── Providers/ModuleServiceProvider.php

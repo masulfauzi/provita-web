@@ -2,21 +2,27 @@
 import { computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Button from 'primevue/button';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
 import Tag from 'primevue/tag';
 import { useConfirm } from 'primevue/useconfirm';
 import ConfirmDelete from '@/Components/ConfirmDelete.vue';
 import DateText from '@/Components/DateText.vue';
+import MoneyText from '@/Components/MoneyText.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { usePermission } from '@/composables/usePermission';
 
 const props = defineProps({
     item: { type: Object, required: true },
+    rekening: { type: Array, default: () => [] },
     jenisOptions: { type: Array, default: () => [] },
     jenisKelaminOptions: { type: Array, default: () => [] },
 });
 
 const { can } = usePermission();
 const confirm = useConfirm();
+
+const jenisRekening = { tabungan: 'Tabungan' };
 
 const label = (options, value) => options.find((o) => o.value === value)?.label ?? value ?? '-';
 const isSiswa = computed(() => props.item.jenis === 'siswa');
@@ -85,4 +91,41 @@ function toggleActive() {
         <dt class="text-muted-color">Terdaftar</dt>
         <dd><DateText :value="item.created_at" /></dd>
     </dl>
+
+    <div v-if="can('rekening.lihat')" class="card mt-5 max-w-3xl">
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold">Rekening ({{ rekening.length }})</h2>
+            <Link v-if="item.is_active && can('rekening.buka')" :href="`/rekening/create?nasabah=${item.id}`">
+                <Button label="Buka rekening" icon="pi pi-plus" size="small" />
+            </Link>
+        </div>
+        <DataTable
+            :value="rekening"
+            data-key="id"
+            size="small"
+            row-hover
+            class="cursor-pointer"
+            @row-click="(e) => router.visit(`/rekening/${e.data.id}`)"
+        >
+            <template #empty>Nasabah ini belum memiliki rekening.</template>
+            <Column field="nomor" header="Nomor rekening" />
+            <Column header="Jenis">
+                <template #body="{ data }">{{ jenisRekening[data.jenis] ?? data.jenis }}</template>
+            </Column>
+            <Column header="Saldo" class="text-right">
+                <template #body="{ data }"><MoneyText :value="data.saldo" /></template>
+            </Column>
+            <Column header="Dibuka">
+                <template #body="{ data }"><DateText :value="data.tanggal_buka" /></template>
+            </Column>
+            <Column header="Status">
+                <template #body="{ data }">
+                    <Tag
+                        :value="data.status === 'aktif' ? 'Aktif' : 'Ditutup'"
+                        :severity="data.status === 'aktif' ? 'success' : 'secondary'"
+                    />
+                </template>
+            </Column>
+        </DataTable>
+    </div>
 </template>

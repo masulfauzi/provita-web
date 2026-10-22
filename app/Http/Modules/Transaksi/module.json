@@ -2,8 +2,10 @@
     "name": "Transaksi",
     "label": "Transaksi",
     "icon": "pi pi-arrow-right-arrow-left",
-    "order": 210,
-    "menu": [],
+    "order": 200,
+    "menu": [
+        { "label": "Setor / Tarik", "route": "transaksi.index", "icon": "pi pi-wallet", "permission": "transaksi.setor", "group": "Tabungan", "order": 200 }
+    ],
     "permissions": {
         "transaksi.setor": { "label": "Setoran tabungan", "roles": ["teller"] },
         "transaksi.tarik": { "label": "Penarikan tabungan", "roles": ["teller"] },

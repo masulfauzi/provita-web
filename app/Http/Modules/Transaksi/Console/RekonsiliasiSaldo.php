@@ -23,6 +23,7 @@ class RekonsiliasiSaldo extends Command
         $selisih = [];
 
         Rekening::query()
+            ->with('nasabah:id,nama')
             ->when($this->option('rekening'), fn ($q, $nomor) => $q->where('nomor', $nomor))
             ->orderBy('nomor')
             ->chunkById(500, function ($rekenings) use ($service, &$selisih) {
@@ -33,7 +34,7 @@ class RekonsiliasiSaldo extends Command
                         continue;
                     }
 
-                    $selisih[] = [$rekening->nomor, $rekening->nama, Money::format($rekening->saldo), Money::format($seharusnya)];
+                    $selisih[] = [$rekening->nomor, $rekening->nasabah?->nama, Money::format($rekening->saldo), Money::format($seharusnya)];
 
                     if ($this->option('fix')) {
                         $tersimpan = $rekening->saldo;

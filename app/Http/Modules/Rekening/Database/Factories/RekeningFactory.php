@@ -2,6 +2,7 @@
 
 namespace App\Http\Modules\Rekening\Database\Factories;
 
+use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Rekening\Models\Rekening;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,8 +19,9 @@ class RekeningFactory extends Factory
     public function definition(): array
     {
         return [
-            'nomor' => fake()->unique()->numerify('TAB-######'),
-            'nama' => fake()->name(),
+            'nomor' => fake()->unique()->numerify('TES-######'),
+            'nasabah_id' => Nasabah::factory(),
+            'jenis' => 'tabungan',
             'saldo_awal' => '0.00',
             'status' => 'aktif',
             'tanggal_buka' => today(),

@@ -7,9 +7,11 @@ use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Nasabah\Requests\StoreNasabahRequest;
 use App\Http\Modules\Nasabah\Requests\UpdateNasabahRequest;
 use App\Http\Modules\Nasabah\Services\NasabahService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,6 +33,16 @@ class NasabahController extends Controller
             'kelas' => $this->service->daftarKelas(),
             ...$this->options(),
         ]);
+    }
+
+    /**
+     * Pencarian nasabah aktif untuk AutoComplete (mis. saat membuka rekening).
+     */
+    public function cari(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Nasabah::class);
+
+        return response()->json($this->service->cariAktif($request->string('q')->toString()));
     }
 
     public function create(): Response
@@ -57,6 +69,10 @@ class NasabahController extends Controller
 
         return Inertia::render('Nasabah::Show', [
             'item' => $nasabah,
+            'rekening' => $nasabah->rekening()
+                ->orderByRaw("status = 'aktif' desc")
+                ->orderBy('nomor')
+                ->get(['id', 'nomor', 'jenis', 'saldo', 'status', 'tanggal_buka', 'tanggal_tutup']),
             ...$this->options(),
         ]);
     }
@@ -94,7 +110,11 @@ class NasabahController extends Controller
     {
         Gate::authorize('delete', $nasabah);
 
-        $this->service->delete($nasabah);
+        try {
+            $this->service->delete($nasabah);
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        }
 
         return redirect()->route('nasabah.index')->with('success', 'Nasabah berhasil dihapus.');
     }

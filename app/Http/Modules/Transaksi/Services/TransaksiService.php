@@ -9,6 +9,7 @@ use App\Http\Modules\Transaksi\Models\Transaksi;
 use App\Models\User;
 use App\Support\Finance\FinancialTransaction;
 use App\Support\Money;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * Satu-satunya pintu untuk mengubah saldo rekening. Semua operasi
@@ -53,6 +54,62 @@ class TransaksiService
     }
 
     /**
+     * Menutup rekening: potong biaya administrasi penutupan (maksimal sebesar
+     * saldo), lalu sisa saldo diserahkan ke nasabah. Semua dalam satu lock.
+     *
+     * @return array{biaya: string, diserahkan: string}
+     */
+    public function tutup(Rekening|string $rekening, ?User $user = null): array
+    {
+        $id = $rekening instanceof Rekening ? $rekening->getKey() : $rekening;
+
+        return FinancialTransaction::lock(Rekening::query()->whereKey($id), function (Rekening $rekening) use ($user) {
+            $this->pastikanAktif($rekening);
+
+            $biaya = $this->biayaPenutupan($rekening->saldo);
+
+            if (Money::isPositive($biaya)) {
+                $this->mutasi($rekening, Transaksi::BIAYA, $biaya, Money::negate($biaya), $user, 'Biaya administrasi penutupan');
+            }
+
+            $diserahkan = Money::of($rekening->saldo);
+
+            if (Money::isPositive($diserahkan)) {
+                $this->mutasi($rekening, Transaksi::PENUTUPAN, $diserahkan, Money::negate($diserahkan), $user, 'Penutupan rekening');
+            }
+
+            $rekening->forceFill([
+                'status' => Rekening::TUTUP,
+                'tanggal_tutup' => $this->pengaturan->tanggalTransaksi(),
+            ])->save();
+
+            return ['biaya' => $biaya, 'diserahkan' => $diserahkan];
+        });
+    }
+
+    /**
+     * Biaya penutupan dari pengaturan adm_penutupan, tidak melebihi saldo.
+     */
+    public function biayaPenutupan(int|string $saldo): string
+    {
+        $biaya = $this->pengaturan->uang('adm_penutupan');
+
+        return Money::compare($biaya, $saldo) > 0 ? Money::of($saldo) : $biaya;
+    }
+
+    /**
+     * Mutasi rekening untuk buku tabungan, terbaru di atas.
+     */
+    public function bukuTabungan(Rekening $rekening, int $perPage = 25): LengthAwarePaginator
+    {
+        return $rekening->transaksi()
+            ->with(['user:id,name', 'pembalik:id,pembalik_dari_id'])
+            ->orderByDesc('urut')
+            ->paginate(min(max($perPage, 10), 100))
+            ->withQueryString();
+    }
+
+    /**
      * Saldo sebenarnya: saldo awal + jumlah semua mutasi.
      */
     public function hitungSaldo(Rekening $rekening): string
@@ -76,37 +133,58 @@ class TransaksiService
         return FinancialTransaction::lock(Rekening::query()->whereKey($id), function (Rekening $rekening) use (
             $jenis, $nominal, $mutasi, $user, $keterangan, $pembalikDari
         ) {
-            if ($rekening->status !== 'aktif') {
-                throw TransaksiDitolakException::rekeningTidakAktif();
-            }
+            $this->pastikanAktif($rekening);
 
             if ($pembalikDari && Transaksi::where('pembalik_dari_id', $pembalikDari->id)->exists()) {
                 throw TransaksiDitolakException::sudahDibalik();
             }
 
-            $saldoBaru = Money::add($rekening->saldo, $mutasi);
-
-            // Saldo tidak boleh negatif, termasuk akibat transaksi pembalik.
-            if (Money::isNegative($saldoBaru)) {
-                throw TransaksiDitolakException::saldoTidakCukup(Money::format($rekening->saldo), Money::format($nominal));
-            }
-
-            $transaksi = Transaksi::create([
-                'rekening_id' => $rekening->id,
-                'tanggal' => $this->pengaturan->tanggalTransaksi(),
-                'jenis' => $jenis,
-                'nominal' => $nominal,
-                'mutasi' => $mutasi,
-                'saldo_sesudah' => $saldoBaru,
-                'keterangan' => $keterangan,
-                'pembalik_dari_id' => $pembalikDari?->id,
-                'user_id' => $user?->id,
-            ]);
-
-            $rekening->forceFill(['saldo' => $saldoBaru])->save();
-
-            return $transaksi;
+            return $this->mutasi($rekening, $jenis, $nominal, $mutasi, $user, $keterangan, $pembalikDari);
         });
+    }
+
+    /**
+     * Mencatat satu mutasi pada rekening yang SUDAH dikunci oleh pemanggil.
+     */
+    protected function mutasi(
+        Rekening $rekening,
+        string $jenis,
+        string $nominal,
+        string $mutasi,
+        ?User $user,
+        ?string $keterangan,
+        ?Transaksi $pembalikDari = null,
+    ): Transaksi {
+        $saldoBaru = Money::add($rekening->saldo, $mutasi);
+
+        // Saldo tidak boleh negatif, termasuk akibat transaksi pembalik.
+        if (Money::isNegative($saldoBaru)) {
+            throw TransaksiDitolakException::saldoTidakCukup(Money::format($rekening->saldo), Money::format($nominal));
+        }
+
+        $transaksi = Transaksi::create([
+            'rekening_id' => $rekening->id,
+            'urut' => (int) Transaksi::where('rekening_id', $rekening->id)->max('urut') + 1,
+            'tanggal' => $this->pengaturan->tanggalTransaksi(),
+            'jenis' => $jenis,
+            'nominal' => $nominal,
+            'mutasi' => $mutasi,
+            'saldo_sesudah' => $saldoBaru,
+            'keterangan' => $keterangan,
+            'pembalik_dari_id' => $pembalikDari?->id,
+            'user_id' => $user?->id,
+        ]);
+
+        $rekening->forceFill(['saldo' => $saldoBaru])->save();
+
+        return $transaksi;
+    }
+
+    protected function pastikanAktif(Rekening $rekening): void
+    {
+        if (! $rekening->isAktif()) {
+            throw TransaksiDitolakException::rekeningTidakAktif();
+        }
     }
 
     protected function nominal(int|string $nominal): string

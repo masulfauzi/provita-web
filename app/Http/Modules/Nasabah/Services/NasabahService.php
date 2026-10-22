@@ -6,6 +6,7 @@ use App\Http\Modules\Nasabah\Models\Nasabah;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class NasabahService
 {
@@ -28,6 +29,22 @@ class NasabahService
             ->orderBy('nama')
             ->paginate(min(max($perPage, 5), 100))
             ->withQueryString();
+    }
+
+    /**
+     * @return Collection<int, Nasabah>
+     */
+    public function cariAktif(string $search, int $limit = 10): Collection
+    {
+        return Nasabah::query()
+            ->where('is_active', true)
+            ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
+                ->where('nama', 'like', "%{$search}%")
+                ->orWhere('nomor', 'like', "%{$search}%")
+                ->orWhere('nis', 'like', "%{$search}%")))
+            ->orderBy('nama')
+            ->limit($limit)
+            ->get(['id', 'nomor', 'nis', 'nama', 'kelas']);
     }
 
     /**
@@ -67,9 +84,20 @@ class NasabahService
         $nasabah->update(['is_active' => $active]);
     }
 
+    /**
+     * Nasabah yang sudah memiliki rekening tidak boleh dihapus (riwayat
+     * transaksinya harus tetap ada); gunakan nonaktifkan.
+     *
+     * @throws ValidationException
+     */
     public function delete(Nasabah $nasabah): void
     {
-        // TODO(modul Rekening): tolak bila nasabah sudah memiliki rekening; arahkan ke nonaktifkan.
+        if ($nasabah->rekening()->exists()) {
+            throw ValidationException::withMessages([
+                'nasabah' => 'Nasabah sudah memiliki rekening sehingga tidak bisa dihapus. Gunakan Nonaktifkan.',
+            ]);
+        }
+
         $nasabah->delete();
     }
 

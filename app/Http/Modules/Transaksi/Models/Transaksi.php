@@ -30,10 +30,23 @@ class Transaksi extends Model
 
     public const PEMBALIK = 'pembalik';
 
+    public const BIAYA = 'biaya';
+
+    public const PENUTUPAN = 'penutupan';
+
+    public const JENIS = [
+        self::SETOR => 'Setoran',
+        self::TARIK => 'Penarikan',
+        self::PEMBALIK => 'Koreksi',
+        self::BIAYA => 'Biaya administrasi',
+        self::PENUTUPAN => 'Penutupan',
+    ];
+
     protected $table = 'transaksi';
 
     protected $fillable = [
         'rekening_id',
+        'urut',
         'tanggal',
         'jenis',
         'nominal',
@@ -47,7 +60,7 @@ class Transaksi extends Model
     protected function casts(): array
     {
         return [
-            'tanggal' => 'date',
+            'tanggal' => 'date:Y-m-d',
             'nominal' => 'decimal:2',
             'mutasi' => 'decimal:2',
             'saldo_sesudah' => 'decimal:2',

@@ -3,9 +3,11 @@
 namespace App\Http\Modules\Nasabah\Models;
 
 use App\Http\Modules\Nasabah\Database\Factories\NasabahFactory;
+use App\Http\Modules\Rekening\Models\Rekening;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -57,6 +59,14 @@ class Nasabah extends Model
     protected static function newFactory(): NasabahFactory
     {
         return NasabahFactory::new();
+    }
+
+    /**
+     * @return HasMany<Rekening, $this>
+     */
+    public function rekening(): HasMany
+    {
+        return $this->hasMany(Rekening::class);
     }
 
     public function getActivitylogOptions(): LogOptions
