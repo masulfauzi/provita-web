@@ -4,14 +4,34 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "lint": "eslint resources/js app/Http/Modules",
+        "lint:fix": "eslint resources/js app/Http/Modules --fix",
+        "format": "prettier --write \"resources/js/**/*.{js,vue}\" \"app/Http/Modules/**/*.{js,vue}\" --no-error-on-unmatched-pattern",
+        "format:check": "prettier --check \"resources/js/**/*.{js,vue}\" \"app/Http/Modules/**/*.{js,vue}\" --no-error-on-unmatched-pattern"
     },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@tailwindcss/vite": "^4.0.0",
-        "axios": "^1.11.0",
+        "@vitejs/plugin-vue": "^6.0.10",
         "concurrently": "^9.0.1",
+        "eslint": "^10.13.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-vue": "^10.11.1",
+        "globals": "^17.13.0",
         "laravel-vite-plugin": "^2.0.0",
+        "prettier": "^3.9.10",
         "tailwindcss": "^4.0.0",
+        "tailwindcss-primeui": "^0.6.1",
         "vite": "^7.0.7"
-    }
+    },
+    "dependencies": {
+        "@inertiajs/vue3": "^3.9.1",
+        "@primeuix/themes": "^1.2.5",
+        "@vueuse/core": "^15.0.0",
+        "primeicons": "^7.0.0",
+        "primevue": "^4.5.5",
+        "vue": "^3.5.44"
+    },
+    "name": "bank-provita"
 }
