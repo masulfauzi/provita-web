@@ -1,0 +1,9 @@
+<?php
+
+use App\Http\Modules\{{Module}}\Controllers\{{Module}}Controller;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware('can:{{permission}}.lihat')->group(function () {
+    Route::resource('{{module}}', {{Module}}Controller::class)
+        ->parameters(['{{module}}' => '{{variable}}']);
+});

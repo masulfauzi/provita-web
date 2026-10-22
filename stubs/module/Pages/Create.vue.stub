@@ -1,0 +1,29 @@
+<script setup>
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import Button from 'primevue/button';
+import PageHeader from '@/Components/PageHeader.vue';
+import {{Module}}Form from '@modules/{{Module}}/Components/{{Module}}Form.vue';
+
+const form = useForm({
+    nama: '',
+    keterangan: '',
+});
+
+function submit() {
+    form.post('/{{module}}');
+}
+</script>
+
+<template>
+    <Head title="Tambah {{label}}" />
+
+    <PageHeader title="Tambah {{label}}" />
+
+    <{{Module}}Form :form="form" @submit="submit">
+        <template #actions>
+            <Link href="/{{module}}">
+                <Button label="Batal" severity="secondary" text />
+            </Link>
+        </template>
+    </{{Module}}Form>
+</template>

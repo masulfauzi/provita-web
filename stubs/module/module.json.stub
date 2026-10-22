@@ -1,0 +1,13 @@
+{
+    "name": "{{Module}}",
+    "label": "{{label}}",
+    "icon": "pi pi-box",
+    "order": 100,
+    "menu": {{menu}},
+    "permissions": {
+        "{{permission}}.lihat": { "label": "Lihat {{label}}", "roles": [] },
+        "{{permission}}.tambah": { "label": "Tambah {{label}}", "roles": [] },
+        "{{permission}}.ubah": { "label": "Ubah {{label}}", "roles": [] },
+        "{{permission}}.hapus": { "label": "Hapus {{label}}", "roles": [] }
+    }
+}

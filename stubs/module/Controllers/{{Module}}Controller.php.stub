@@ -1,0 +1,80 @@
+<?php
+
+namespace App\Http\Modules\{{Module}}\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Http\Modules\{{Module}}\Models\{{Module}};
+use App\Http\Modules\{{Module}}\Requests\Store{{Module}}Request;
+use App\Http\Modules\{{Module}}\Requests\Update{{Module}}Request;
+use App\Http\Modules\{{Module}}\Services\{{Module}}Service;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class {{Module}}Controller extends Controller
+{
+    public function __construct(protected {{Module}}Service $service) {}
+
+    public function index(Request $request): Response
+    {
+        Gate::authorize('viewAny', {{Module}}::class);
+
+        return Inertia::render('{{Module}}::Index', [
+            'items' => $this->service->paginate(
+                search: $request->string('search')->toString(),
+                perPage: $request->integer('per_page', 15),
+            ),
+            'filters' => $request->only('search'),
+        ]);
+    }
+
+    public function create(): Response
+    {
+        Gate::authorize('create', {{Module}}::class);
+
+        return Inertia::render('{{Module}}::Create');
+    }
+
+    public function store(Store{{Module}}Request $request): RedirectResponse
+    {
+        $this->service->create($request->validated());
+
+        return redirect()->route('{{module}}.index')->with('success', '{{label}} berhasil ditambahkan.');
+    }
+
+    public function show({{Module}} ${{variable}}): Response
+    {
+        Gate::authorize('view', ${{variable}});
+
+        return Inertia::render('{{Module}}::Show', [
+            'item' => ${{variable}},
+        ]);
+    }
+
+    public function edit({{Module}} ${{variable}}): Response
+    {
+        Gate::authorize('update', ${{variable}});
+
+        return Inertia::render('{{Module}}::Edit', [
+            'item' => ${{variable}},
+        ]);
+    }
+
+    public function update(Update{{Module}}Request $request, {{Module}} ${{variable}}): RedirectResponse
+    {
+        $this->service->update(${{variable}}, $request->validated());
+
+        return redirect()->route('{{module}}.index')->with('success', '{{label}} berhasil diperbarui.');
+    }
+
+    public function destroy({{Module}} ${{variable}}): RedirectResponse
+    {
+        Gate::authorize('delete', ${{variable}});
+
+        $this->service->delete(${{variable}});
+
+        return redirect()->route('{{module}}.index')->with('success', '{{label}} berhasil dihapus.');
+    }
+}

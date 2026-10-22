@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Http\Modules\{{Module}}\Database\Factories;
+
+use App\Http\Modules\{{Module}}\Models\{{Module}};
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<{{Module}}>
+ */
+class {{Module}}Factory extends Factory
+{
+    protected $model = {{Module}}::class;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'nama' => fake()->words(3, true),
+            'keterangan' => fake()->optional()->sentence(),
+        ];
+    }
+}

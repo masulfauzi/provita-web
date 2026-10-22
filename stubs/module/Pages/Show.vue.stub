@@ -1,0 +1,35 @@
+<script setup>
+import { Head, Link } from '@inertiajs/vue3';
+import Button from 'primevue/button';
+import DateText from '@/Components/DateText.vue';
+import PageHeader from '@/Components/PageHeader.vue';
+import { usePermission } from '@/composables/usePermission';
+
+defineProps({
+    item: { type: Object, required: true },
+});
+
+const { can } = usePermission();
+</script>
+
+<template>
+    <Head :title="item.nama" />
+
+    <PageHeader :title="item.nama" subtitle="Detail {{label}}">
+        <Link href="/{{module}}">
+            <Button label="Kembali" icon="pi pi-arrow-left" severity="secondary" text />
+        </Link>
+        <Link v-if="can('{{permission}}.ubah')" :href="`/{{module}}/${item.id}/edit`">
+            <Button label="Ubah" icon="pi pi-pencil" />
+        </Link>
+    </PageHeader>
+
+    <dl class="card grid max-w-2xl grid-cols-[10rem_1fr] gap-x-4 gap-y-3">
+        <dt class="text-muted-color">Nama</dt>
+        <dd>{{ item.nama }}</dd>
+        <dt class="text-muted-color">Keterangan</dt>
+        <dd>{{ item.keterangan || '-' }}</dd>
+        <dt class="text-muted-color">Dibuat</dt>
+        <dd><DateText :value="item.created_at" /></dd>
+    </dl>
+</template>

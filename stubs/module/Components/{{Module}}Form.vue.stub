@@ -1,0 +1,38 @@
+<script setup>
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Message from 'primevue/message';
+import Textarea from 'primevue/textarea';
+
+defineProps({
+    form: { type: Object, required: true },
+    submitLabel: { type: String, default: 'Simpan' },
+});
+
+defineEmits(['submit']);
+</script>
+
+<template>
+    <form class="card flex max-w-2xl flex-col gap-5" @submit.prevent="$emit('submit')">
+        <div class="flex flex-col gap-2">
+            <label for="nama" class="font-medium">Nama</label>
+            <InputText id="nama" v-model="form.nama" :invalid="!!form.errors.nama" autofocus />
+            <Message v-if="form.errors.nama" severity="error" size="small" variant="simple">
+                {{ form.errors.nama }}
+            </Message>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <label for="keterangan" class="font-medium">Keterangan</label>
+            <Textarea id="keterangan" v-model="form.keterangan" rows="3" :invalid="!!form.errors.keterangan" />
+            <Message v-if="form.errors.keterangan" severity="error" size="small" variant="simple">
+                {{ form.errors.keterangan }}
+            </Message>
+        </div>
+
+        <div class="flex gap-2">
+            <Button type="submit" :label="submitLabel" icon="pi pi-check" :loading="form.processing" />
+            <slot name="actions" />
+        </div>
+    </form>
+</template>

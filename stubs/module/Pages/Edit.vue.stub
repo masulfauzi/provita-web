@@ -1,0 +1,33 @@
+<script setup>
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import Button from 'primevue/button';
+import PageHeader from '@/Components/PageHeader.vue';
+import {{Module}}Form from '@modules/{{Module}}/Components/{{Module}}Form.vue';
+
+const props = defineProps({
+    item: { type: Object, required: true },
+});
+
+const form = useForm({
+    nama: props.item.nama,
+    keterangan: props.item.keterangan ?? '',
+});
+
+function submit() {
+    form.put(`/{{module}}/${props.item.id}`);
+}
+</script>
+
+<template>
+    <Head title="Ubah {{label}}" />
+
+    <PageHeader title="Ubah {{label}}" :subtitle="item.nama" />
+
+    <{{Module}}Form :form="form" submit-label="Simpan perubahan" @submit="submit">
+        <template #actions>
+            <Link href="/{{module}}">
+                <Button label="Batal" severity="secondary" text />
+            </Link>
+        </template>
+    </{{Module}}Form>
+</template>

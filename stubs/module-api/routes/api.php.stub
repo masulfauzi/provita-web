@@ -1,0 +1,7 @@
+<?php
+
+use App\Http\Modules\{{Module}}\Controllers\Api\{{Module}}Controller;
+use Illuminate\Support\Facades\Route;
+
+Route::apiResource('{{module}}', {{Module}}Controller::class)
+    ->parameters(['{{module}}' => '{{variable}}']);

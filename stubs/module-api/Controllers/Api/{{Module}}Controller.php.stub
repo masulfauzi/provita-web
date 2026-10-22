@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Http\Modules\{{Module}}\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Modules\{{Module}}\Models\{{Module}};
+use App\Http\Modules\{{Module}}\Requests\Store{{Module}}Request;
+use App\Http\Modules\{{Module}}\Requests\Update{{Module}}Request;
+use App\Http\Modules\{{Module}}\Services\{{Module}}Service;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
+
+class {{Module}}Controller extends Controller
+{
+    public function __construct(protected {{Module}}Service $service) {}
+
+    public function index(Request $request): LengthAwarePaginator
+    {
+        Gate::authorize('viewAny', {{Module}}::class);
+
+        return $this->service->paginate(
+            search: $request->string('search')->toString(),
+            perPage: $request->integer('per_page', 15),
+        );
+    }
+
+    public function store(Store{{Module}}Request $request): JsonResponse
+    {
+        return response()->json($this->service->create($request->validated()), 201);
+    }
+
+    public function show({{Module}} ${{variable}}): {{Module}}
+    {
+        Gate::authorize('view', ${{variable}});
+
+        return ${{variable}};
+    }
+
+    public function update(Update{{Module}}Request $request, {{Module}} ${{variable}}): {{Module}}
+    {
+        return $this->service->update(${{variable}}, $request->validated());
+    }
+
+    public function destroy({{Module}} ${{variable}}): Response
+    {
+        Gate::authorize('delete', ${{variable}});
+
+        $this->service->delete(${{variable}});
+
+        return response()->noContent();
+    }
+}

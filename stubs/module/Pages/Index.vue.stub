@@ -1,0 +1,91 @@
+<script setup>
+import { ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { watchDebounced } from '@vueuse/core';
+import Button from 'primevue/button';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import InputText from 'primevue/inputtext';
+import ConfirmDelete from '@/Components/ConfirmDelete.vue';
+import DateText from '@/Components/DateText.vue';
+import PageHeader from '@/Components/PageHeader.vue';
+import { usePermission } from '@/composables/usePermission';
+
+const props = defineProps({
+    items: { type: Object, required: true },
+    filters: { type: Object, default: () => ({}) },
+});
+
+const { can } = usePermission();
+const search = ref(props.filters.search ?? '');
+
+function reload(params = {}) {
+    router.get(
+        '/{{module}}',
+        { search: search.value || undefined, per_page: props.items.per_page, ...params },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
+}
+
+watchDebounced(search, () => reload({ page: 1 }), { debounce: 400 });
+
+function onPage(event) {
+    reload({ page: event.page + 1, per_page: event.rows });
+}
+</script>
+
+<template>
+    <Head title="{{label}}" />
+
+    <PageHeader title="{{label}}" subtitle="Daftar data {{label}}">
+        <Link v-if="can('{{permission}}.tambah')" href="/{{module}}/create">
+            <Button label="Tambah" icon="pi pi-plus" />
+        </Link>
+    </PageHeader>
+
+    <div class="card">
+        <DataTable
+            :value="items.data"
+            lazy
+            paginator
+            :rows="items.per_page"
+            :total-records="items.total"
+            :first="(items.current_page - 1) * items.per_page"
+            :rows-per-page-options="[15, 30, 50, 100]"
+            data-key="id"
+            striped-rows
+            @page="onPage"
+        >
+            <template #header>
+                <IconField>
+                    <InputIcon class="pi pi-search" />
+                    <InputText v-model="search" placeholder="Cari..." />
+                </IconField>
+            </template>
+            <template #empty>Belum ada data.</template>
+
+            <Column field="nama" header="Nama" />
+            <Column field="keterangan" header="Keterangan" />
+            <Column header="Dibuat">
+                <template #body="{ data }">
+                    <DateText :value="data.created_at" />
+                </template>
+            </Column>
+            <Column header="" class="w-px whitespace-nowrap">
+                <template #body="{ data }">
+                    <div class="flex gap-1">
+                        <Link :href="`/{{module}}/${data.id}`">
+                            <Button icon="pi pi-eye" text rounded aria-label="Lihat" />
+                        </Link>
+                        <Link v-if="can('{{permission}}.ubah')" :href="`/{{module}}/${data.id}/edit`">
+                            <Button icon="pi pi-pencil" text rounded aria-label="Ubah" />
+                        </Link>
+                        <ConfirmDelete v-if="can('{{permission}}.hapus')" :url="`/{{module}}/${data.id}`" />
+                    </div>
+                </template>
+            </Column>
+        </DataTable>
+    </div>
+</template>

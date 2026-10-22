@@ -1,0 +1,59 @@
+<?php
+
+use App\Http\Modules\{{Module}}\Models\{{Module}};
+use Inertia\Testing\AssertableInertia as Assert;
+
+beforeEach(function () {
+    $this->user = userWithPermissions('{{permission}}.lihat', '{{permission}}.tambah', '{{permission}}.ubah', '{{permission}}.hapus');
+});
+
+it('menampilkan daftar {{label}}', function () {
+    {{Module}}::factory()->count(3)->create();
+
+    $this->actingAs($this->user)
+        ->get('/{{module}}')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('{{Module}}::Index')
+            ->has('items.data', 3));
+});
+
+it('menyimpan {{label}} baru', function () {
+    $this->actingAs($this->user)
+        ->post('/{{module}}', ['nama' => 'Data baru', 'keterangan' => 'Catatan'])
+        ->assertRedirect('/{{module}}');
+
+    expect({{Module}}::where('nama', 'Data baru')->exists())->toBeTrue();
+});
+
+it('memvalidasi input {{label}}', function () {
+    $this->actingAs($this->user)
+        ->post('/{{module}}', ['nama' => ''])
+        ->assertSessionHasErrors('nama');
+});
+
+it('memperbarui {{label}}', function () {
+    ${{variable}} = {{Module}}::factory()->create();
+
+    $this->actingAs($this->user)
+        ->put("/{{module}}/{${{variable}}->id}", ['nama' => 'Nama baru'])
+        ->assertRedirect('/{{module}}');
+
+    expect(${{variable}}->fresh()->nama)->toBe('Nama baru');
+});
+
+it('menghapus {{label}}', function () {
+    ${{variable}} = {{Module}}::factory()->create();
+
+    $this->actingAs($this->user)
+        ->delete("/{{module}}/{${{variable}}->id}")
+        ->assertRedirect('/{{module}}');
+
+    expect({{Module}}::find(${{variable}}->id))->toBeNull();
+});
+
+it('menolak pengguna tanpa permission', function () {
+    $this->actingAs(userWithPermissions())
+        ->get('/{{module}}')
+        ->assertForbidden();
+});

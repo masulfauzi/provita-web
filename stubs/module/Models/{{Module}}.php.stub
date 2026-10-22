@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Http\Modules\{{Module}}\Models;
+
+use App\Http\Modules\{{Module}}\Database\Factories\{{Module}}Factory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+
+class {{Module}} extends Model
+{
+    /** @use HasFactory<{{Module}}Factory> */
+    use HasFactory, HasUuids, LogsActivity;
+
+    protected $table = '{{table}}';
+
+    protected $fillable = [
+        'nama',
+        'keterangan',
+    ];
+
+    protected static function newFactory(): {{Module}}Factory
+    {
+        return {{Module}}Factory::new();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('{{permission}}')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
+    }
+}
