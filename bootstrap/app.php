@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Di hosting, HTTPS diterminasi oleh proxy (Cloudflare/panel); percayai header X-Forwarded-*
+        // agar redirect & URL yang dibuat Laravel memakai https, bukan http.
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
         ]);
