@@ -1,0 +1,17 @@
+{
+    "name": "Akuntansi",
+    "label": "Akuntansi",
+    "icon": "pi pi-calculator",
+    "order": 400,
+    "menu": [
+        { "label": "Jurnal umum", "route": "jurnal.index", "icon": "pi pi-pen-to-square", "permission": "jurnal.lihat", "group": "Keuangan", "order": 310 },
+        { "label": "Bagan akun", "route": "akun.index", "icon": "pi pi-sitemap", "permission": "akun.lihat", "group": "Keuangan", "order": 320 }
+    ],
+    "permissions": {
+        "akun.lihat": { "label": "Lihat bagan akun", "roles": [] },
+        "akun.kelola": { "label": "Tambah / ubah / hapus akun", "roles": [] },
+        "jurnal.lihat": { "label": "Lihat jurnal umum", "roles": [] },
+        "jurnal.tambah": { "label": "Mencatat jurnal umum", "roles": [] },
+        "jurnal.balik": { "label": "Mengoreksi (membalik) jurnal umum", "roles": [] }
+    }
+}

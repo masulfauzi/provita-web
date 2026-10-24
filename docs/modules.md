@@ -77,7 +77,7 @@ Setelah mengubah `permissions`, jalankan `php artisan permission:sync-modules` (
 | Halaman Inertia | `Modul::Halaman` | `LogAktivitas::Index` |
 | Import Vue antar file modul | alias `@modules` | `@modules/Pengguna/Components/Form.vue` |
 
-Aksi permission yang umum: `lihat`, `tambah`, `ubah`, `hapus`, plus aksi domain seperti `transaksi.setor`, `pinjaman.akad`, `laporan.neraca`.
+Aksi permission yang umum: `lihat`, `tambah`, `ubah`, `hapus`, plus aksi domain seperti `transaksi.setor`, `pinjaman.akad`, `laporan.keuangan`.
 
 ## Kapan memakai Service
 

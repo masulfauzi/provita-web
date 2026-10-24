@@ -2,6 +2,7 @@
 
 namespace App\Http\Modules\Transaksi\Services;
 
+use App\Http\Modules\Akuntansi\Services\JurnalService;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Http\Modules\Transaksi\Exceptions\TransaksiDitolakException;
@@ -176,6 +177,11 @@ class TransaksiService
         ]);
 
         $rekening->forceFill(['saldo' => $saldoBaru])->save();
+
+        // Jurnal ikut dicatat di DB transaction yang sama: gagal satu, batal semua.
+        if (class_exists(JurnalService::class)) {
+            app(JurnalService::class)->dariTransaksi($transaksi);
+        }
 
         return $transaksi;
     }

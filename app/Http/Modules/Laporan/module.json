@@ -7,9 +7,7 @@
         { "label": "Laporan keuangan", "route": "laporan.index", "permission": "laporan.keuangan", "group": "Laporan" }
     ],
     "permissions": {
-        "laporan.keuangan": { "label": "Lihat laporan keuangan", "roles": [] },
-        "laporan.neraca": { "label": "Lihat neraca", "roles": [] },
-        "laporan.laba_rugi": { "label": "Lihat laba rugi", "roles": [] },
+        "laporan.keuangan": { "label": "Lihat & unduh laporan keuangan (neraca, laba rugi, arus kas, buku besar)", "roles": ["teller"] },
         "laporan.harian": { "label": "Lihat laporan harian kas", "roles": ["teller"] }
     }
 }

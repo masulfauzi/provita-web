@@ -46,7 +46,7 @@ Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller`
 | Peran | Akses |
 | --- | --- |
 | `bendahara` | Semua menu. Otomatis mendapat setiap permission baru. |
-| `teller` | Setoran, penarikan, penutupan, buku tabungan, laporan harian kas (halamannya menyusul di issue modul); pengaturan hanya tanggal transaksi & uang modal. |
+| `teller` | Setoran, penarikan, penutupan, buku tabungan, melihat & mengunduh laporan keuangan; pengaturan hanya tanggal transaksi & uang modal. |
 | `admin` | Kelola pengguna, jenis rekening, dan pengaturan umum/teknis. |
 
 Peran & permission dideklarasikan di `config/permissions.php` dan `module.json` tiap modul, lalu disinkronkan dengan `php artisan permission:sync-modules`.
@@ -64,6 +64,7 @@ Peran & permission dideklarasikan di `config/permissions.php` dan `module.json` 
 | `php artisan make:module Nama --menu [--api]` | Membuat modul baru |
 | `php artisan permission:sync-modules [--prune]` | Sinkronisasi role & permission |
 | `php artisan saldo:rekonsiliasi [--fix]` | Cek/perbaiki saldo rekening dari saldo awal + mutasi |
+| `php artisan akuntansi:jurnal-transaksi` | Membuat jurnal untuk transaksi tabungan yang belum dijurnal (aman diulang) |
 | `php artisan backup:run --only-db` | Backup database manual |
 | `php artisan schedule:list` | Daftar jadwal |
 
@@ -82,7 +83,9 @@ app/
 │       ├── Nasabah/
 │       ├── Rekening/              # jenis rekening, buka/tutup rekening, buku tabungan
 │       ├── Transaksi/             # setor, tarik, koreksi (pembalik)
-│       └── Pinjaman/  Laporan/     # kerangka, diisi di issue berikutnya
+│       ├── Akuntansi/             # bagan akun, jurnal umum, jurnal otomatis dari transaksi
+│       ├── Laporan/               # neraca, laba rugi, arus kas, neraca saldo, buku besar (+ Excel & cetak)
+│       └── Pinjaman/              # kerangka, diisi di issue berikutnya
 ├── Jobs/                      # HitungBungaBulanan, CekJatuhTempoDeposito
 ├── Providers/ModuleServiceProvider.php
 └── Support/
@@ -102,10 +105,23 @@ docs/modules.md                # konvensi modul
 
 Cara membuat modul baru, aturan penamaan, dan aturan uang & transaksi ada di **[docs/modules.md](docs/modules.md)**.
 
+## Pembukuan & laporan
+
+Setiap transaksi tabungan otomatis dijurnal (double-entry) di DB transaction yang sama:
+
+| Transaksi | Debit | Kredit |
+| --- | --- | --- |
+| Setoran | Kas | Simpanan tabungan nasabah |
+| Penarikan, penutupan | Simpanan tabungan nasabah | Kas |
+| Biaya administrasi | Simpanan tabungan nasabah | Pendapatan administrasi |
+| Koreksi | kebalikan jurnal transaksi asal | |
+
+Transaksi lain (setoran modal, beban, pemindahan kas ke bank) dicatat bendahara lewat **Jurnal umum**. Laporan di `/laporan` dihitung dari jurnal. Catatan: `uang_modal` di Pengaturan adalah kas awal teller per sesi untuk dashboard, bukan modal pembukuan; modal bank dicatat dengan jurnal umum (D Kas / K Modal).
+
 ## Deploy di VPS
 
 1. `composer install --no-dev --optimize-autoloader && npm ci && npm run build`
-2. `php artisan migrate --force && php artisan permission:sync-modules`
+2. `php artisan migrate --force && php artisan permission:sync-modules --prune`
 3. `php artisan config:cache && php artisan route:cache && php artisan view:cache`
 
 **Scheduler** (backup harian 01:30, retensi 14 hari, cek jatuh tempo, bunga bulanan), satu baris cron:

@@ -50,7 +50,7 @@ router.on('navigate', () => (mobileOpen.value = false));
     <div class="min-h-screen lg:flex">
         <aside
             v-if="isDesktop"
-            class="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900"
+            class="sticky top-0 flex h-screen w-64 shrink-0 flex-col print:hidden border-r border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900"
         >
             <div class="flex h-16 items-center gap-2 px-5 text-lg font-semibold text-primary">
                 <i class="pi pi-building-columns text-xl" />
@@ -101,7 +101,7 @@ router.on('navigate', () => (mobileOpen.value = false));
 
         <div class="flex min-w-0 flex-1 flex-col">
             <header
-                class="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-surface-200 bg-surface-0/90 px-4 backdrop-blur dark:border-surface-800 dark:bg-surface-900/90 lg:px-6"
+                class="sticky top-0 z-10 flex h-16 items-center print:hidden gap-3 border-b border-surface-200 bg-surface-0/90 px-4 backdrop-blur dark:border-surface-800 dark:bg-surface-900/90 lg:px-6"
             >
                 <Button v-if="!isDesktop" icon="pi pi-bars" text rounded aria-label="Menu" @click="mobileOpen = true" />
 
@@ -144,7 +144,7 @@ router.on('navigate', () => (mobileOpen.value = false));
                 </div>
             </header>
 
-            <main class="flex-1 p-4 lg:p-6">
+            <main class="flex-1 p-4 lg:p-6 print:p-0">
                 <slot />
             </main>
         </div>
