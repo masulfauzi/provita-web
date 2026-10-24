@@ -10,6 +10,7 @@
  */
 
 use App\Http\Modules\Nasabah\Models\Nasabah;
+use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Http\Modules\Transaksi\Exceptions\TransaksiDitolakException;
 use App\Http\Modules\Transaksi\Services\TransaksiService;
@@ -25,7 +26,12 @@ $aksi = $argv[1] ?? null;
 
 if ($aksi === 'setup') {
     $nasabah = Nasabah::forceCreate(['nomor' => 'TES-'.uniqid(), 'nama' => 'Uji bersamaan', 'jenis_kelamin' => 'L']);
-    $rekening = Rekening::create(['nomor' => 'TES-'.uniqid(), 'nasabah_id' => $nasabah->id, 'saldo_awal' => $argv[2]]);
+    $rekening = Rekening::create([
+        'nomor' => 'TES-'.uniqid(),
+        'nasabah_id' => $nasabah->id,
+        'jenis_rekening_id' => JenisRekening::kode(JenisRekening::TABUNGAN)->id,
+        'saldo_awal' => $argv[2],
+    ]);
     $rekening->forceFill(['saldo' => $argv[2]])->save();
     echo $rekening->id;
 } elseif ($aksi === 'tarik') {

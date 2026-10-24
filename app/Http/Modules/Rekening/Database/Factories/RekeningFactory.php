@@ -3,6 +3,7 @@
 namespace App\Http\Modules\Rekening\Database\Factories;
 
 use App\Http\Modules\Nasabah\Models\Nasabah;
+use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Models\Rekening;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,7 +22,7 @@ class RekeningFactory extends Factory
         return [
             'nomor' => fake()->unique()->numerify('TES-######'),
             'nasabah_id' => Nasabah::factory(),
-            'jenis' => 'tabungan',
+            'jenis_rekening_id' => fn () => JenisRekening::kode(JenisRekening::TABUNGAN)->id,
             'saldo_awal' => '0.00',
             'status' => 'aktif',
             'tanggal_buka' => today(),

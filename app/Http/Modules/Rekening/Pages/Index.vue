@@ -23,20 +23,22 @@ const props = defineProps({
 
 const { can } = usePermission();
 const search = ref(props.filters.search ?? '');
-const filter = reactive({ jenis: props.filters.jenis ?? null, status: props.filters.status ?? null });
+const filter = reactive({
+    jenis_rekening_id: props.filters.jenis_rekening_id ?? null,
+    status: props.filters.status ?? null,
+});
 
 const statusOptions = [
     { value: 'aktif', label: 'Aktif' },
     { value: 'tutup', label: 'Ditutup' },
 ];
-const jenisLabel = (value) => props.jenisOptions.find((o) => o.value === value)?.label ?? value;
 
 function reload(params = {}) {
     router.get(
         '/rekening',
         {
             search: search.value || undefined,
-            jenis: filter.jenis || undefined,
+            jenis_rekening_id: filter.jenis_rekening_id || undefined,
             status: filter.status || undefined,
             per_page: props.items.per_page,
             ...params,
@@ -85,7 +87,7 @@ function onPage(event) {
                         <InputText v-model="search" placeholder="Cari nomor rekening, nama, NIS..." />
                     </IconField>
                     <Select
-                        v-model="filter.jenis"
+                        v-model="filter.jenis_rekening_id"
                         :options="jenisOptions"
                         option-label="label"
                         option-value="value"
@@ -114,7 +116,7 @@ function onPage(event) {
                 </template>
             </Column>
             <Column header="Jenis">
-                <template #body="{ data }">{{ jenisLabel(data.jenis) }}</template>
+                <template #body="{ data }">{{ data.jenis_rekening?.nama }}</template>
             </Column>
             <Column header="Saldo" class="text-right">
                 <template #body="{ data }"><MoneyText :value="data.saldo" /></template>

@@ -47,7 +47,7 @@ Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller`
 | --- | --- |
 | `bendahara` | Semua menu. Otomatis mendapat setiap permission baru. |
 | `teller` | Setoran, penarikan, penutupan, buku tabungan, laporan harian kas (halamannya menyusul di issue modul); pengaturan hanya tanggal transaksi & uang modal. |
-| `admin` | Kelola pengguna dan pengaturan umum/teknis. |
+| `admin` | Kelola pengguna, jenis rekening, dan pengaturan umum/teknis. |
 
 Peran & permission dideklarasikan di `config/permissions.php` dan `module.json` tiap modul, lalu disinkronkan dengan `php artisan permission:sync-modules`.
 
@@ -80,7 +80,7 @@ app/
 │       ├── Pengguna/
 │       ├── LogAktivitas/
 │       ├── Nasabah/
-│       ├── Rekening/              # buka/tutup rekening, buku tabungan
+│       ├── Rekening/              # jenis rekening, buka/tutup rekening, buku tabungan
 │       ├── Transaksi/             # setor, tarik, koreksi (pembalik)
 │       └── Pinjaman/  Laporan/     # kerangka, diisi di issue berikutnya
 ├── Jobs/                      # HitungBungaBulanan, CekJatuhTempoDeposito

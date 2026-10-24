@@ -70,9 +70,10 @@ class NasabahController extends Controller
         return Inertia::render('Nasabah::Show', [
             'item' => $nasabah,
             'rekening' => $nasabah->rekening()
+                ->with('jenisRekening:id,nama')
                 ->orderByRaw("status = 'aktif' desc")
                 ->orderBy('nomor')
-                ->get(['id', 'nomor', 'jenis', 'saldo', 'status', 'tanggal_buka', 'tanggal_tutup']),
+                ->get(['id', 'nomor', 'jenis_rekening_id', 'saldo', 'status', 'tanggal_buka', 'tanggal_tutup']),
             ...$this->options(),
         ]);
     }

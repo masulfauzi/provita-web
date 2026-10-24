@@ -4,11 +4,16 @@
     "icon": "pi pi-book",
     "order": 200,
     "menu": [
-        { "label": "Rekening", "route": "rekening.index", "permission": "rekening.lihat", "group": "Tabungan", "order": 201 }
+        { "label": "Rekening", "route": "rekening.index", "permission": "rekening.lihat", "group": "Tabungan", "order": 201 },
+        { "label": "Jenis Rekening", "route": "jenis-rekening.index", "icon": "pi pi-tags", "permission": "jenis_rekening.lihat", "group": "Data Master", "order": 110 }
     ],
     "permissions": {
         "rekening.lihat": { "label": "Lihat rekening & buku tabungan", "roles": ["teller"] },
         "rekening.buka": { "label": "Membuka rekening", "roles": ["teller"] },
-        "rekening.tutup": { "label": "Menutup rekening", "roles": ["teller"] }
+        "rekening.tutup": { "label": "Menutup rekening", "roles": ["teller"] },
+        "jenis_rekening.lihat": { "label": "Lihat jenis rekening", "roles": ["admin"] },
+        "jenis_rekening.tambah": { "label": "Tambah jenis rekening", "roles": ["admin"] },
+        "jenis_rekening.ubah": { "label": "Ubah / nonaktifkan jenis rekening", "roles": ["admin"] },
+        "jenis_rekening.hapus": { "label": "Hapus jenis rekening", "roles": ["admin"] }
     }
 }

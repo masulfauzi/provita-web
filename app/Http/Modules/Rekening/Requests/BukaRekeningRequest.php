@@ -20,7 +20,7 @@ class BukaRekeningRequest extends FormRequest
     {
         return [
             'nasabah_id' => ['required', 'uuid', Rule::exists('nasabah', 'id')],
-            'jenis' => ['required', Rule::in(array_keys(Rekening::JENIS))],
+            'jenis_rekening_id' => ['required', 'uuid', Rule::exists('jenis_rekening', 'id')->where('is_active', true)],
             'setoran_awal' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99', 'decimal:0,2'],
         ];
     }
@@ -29,7 +29,7 @@ class BukaRekeningRequest extends FormRequest
     {
         return [
             'nasabah_id' => 'nasabah',
-            'jenis' => 'jenis rekening',
+            'jenis_rekening_id' => 'jenis rekening',
             'setoran_awal' => 'setoran awal',
         ];
     }

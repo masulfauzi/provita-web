@@ -18,7 +18,6 @@ import { rupiah } from '@/utils/format';
 const props = defineProps({
     rekening: { type: Object, required: true },
     mutasi: { type: Object, required: true },
-    jenisOptions: { type: Array, default: () => [] },
     jenisTransaksi: { type: Object, default: () => ({}) },
     penutupan: { type: Object, default: null },
 });
@@ -27,9 +26,7 @@ const { can } = usePermission();
 const confirm = useConfirm();
 
 const aktif = computed(() => props.rekening.status === 'aktif');
-const jenisRekening = computed(
-    () => props.jenisOptions.find((o) => o.value === props.rekening.jenis)?.label ?? props.rekening.jenis,
-);
+const jenisRekening = computed(() => props.rekening.jenis_rekening?.nama ?? 'Rekening');
 const isKredit = (row) => !String(row.mutasi).startsWith('-');
 
 function onPage(event) {

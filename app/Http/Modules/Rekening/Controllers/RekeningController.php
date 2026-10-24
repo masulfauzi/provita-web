@@ -5,8 +5,10 @@ namespace App\Http\Modules\Rekening\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
+use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Http\Modules\Rekening\Requests\BukaRekeningRequest;
+use App\Http\Modules\Rekening\Services\JenisRekeningService;
 use App\Http\Modules\Rekening\Services\RekeningService;
 use App\Http\Modules\Transaksi\Exceptions\TransaksiDitolakException;
 use App\Http\Modules\Transaksi\Models\Transaksi;
@@ -24,6 +26,7 @@ class RekeningController extends Controller
     public function __construct(
         protected RekeningService $service,
         protected TransaksiService $transaksi,
+        protected JenisRekeningService $jenis,
     ) {}
 
     public function index(Request $request): Response
@@ -33,11 +36,11 @@ class RekeningController extends Controller
         return Inertia::render('Rekening::Index', [
             'items' => $this->service->paginate(
                 search: $request->string('search')->toString(),
-                filters: $request->only('jenis', 'status'),
+                filters: $request->only('jenis_rekening_id', 'status'),
                 perPage: $request->integer('per_page', 15),
             ),
-            'filters' => $request->only('search', 'jenis', 'status'),
-            'jenisOptions' => $this->jenisOptions(),
+            'filters' => $request->only('search', 'jenis_rekening_id', 'status'),
+            'jenisOptions' => $this->jenis->options(),
         ]);
     }
 
@@ -58,7 +61,7 @@ class RekeningController extends Controller
 
         return Inertia::render('Rekening::Create', [
             'nasabah' => $nasabah,
-            'jenisOptions' => $this->jenisOptions(),
+            'jenisOptions' => $this->jenis->options(hanyaAktif: true),
             'setoranAwalMinimal' => app(PengaturanService::class)->uang('setoran_awal_minimal'),
         ]);
     }
@@ -67,7 +70,7 @@ class RekeningController extends Controller
     {
         $rekening = $this->service->buka(
             Nasabah::findOrFail($request->validated('nasabah_id')),
-            $request->validated('jenis'),
+            JenisRekening::findOrFail($request->validated('jenis_rekening_id')),
             (string) $request->validated('setoran_awal'),
             $request->user(),
         );
@@ -80,7 +83,7 @@ class RekeningController extends Controller
     {
         Gate::authorize('view', $rekening);
 
-        $rekening->load('nasabah:id,nomor,nama,nis,kelas,jenis,is_active');
+        $rekening->load(['nasabah:id,nomor,nama,nis,kelas,jenis,is_active', 'jenisRekening:id,kode,nama']);
 
         return Inertia::render('Rekening::Show', [
             'rekening' => $rekening,
@@ -90,7 +93,6 @@ class RekeningController extends Controller
                     'petugas' => $t->user?->name,
                     'sudah_dibalik' => $t->pembalik !== null,
                 ]),
-            'jenisOptions' => $this->jenisOptions(),
             'jenisTransaksi' => Transaksi::JENIS,
             'penutupan' => $rekening->isAktif() ? [
                 'biaya' => $this->transaksi->biayaPenutupan($rekening->saldo),
@@ -111,16 +113,5 @@ class RekeningController extends Controller
 
         return back()->with('success', "Rekening {$rekening->nomor} ditutup. Uang yang diserahkan ke nasabah: "
             .Money::format($hasil['diserahkan']).' (biaya administrasi '.Money::format($hasil['biaya']).').');
-    }
-
-    /**
-     * @return list<array{value: string, label: string}>
-     */
-    protected function jenisOptions(): array
-    {
-        return collect(Rekening::JENIS)
-            ->map(fn (array $jenis, string $value) => ['value' => $value, 'label' => $jenis['label']])
-            ->values()
-            ->all();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Modules\Rekening\Services;
 
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
+use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Http\Modules\Transaksi\Services\TransaksiService;
 use App\Models\User;
@@ -22,14 +23,14 @@ class RekeningService
     ) {}
 
     /**
-     * @param  array{jenis?: string|null, status?: string|null}  $filters
+     * @param  array{jenis_rekening_id?: string|null, status?: string|null}  $filters
      */
     public function paginate(string $search = '', array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Rekening::query()
-            ->with('nasabah:id,nomor,nama,nis,kelas')
+            ->with(['nasabah:id,nomor,nama,nis,kelas', 'jenisRekening:id,kode,nama'])
             ->when($search !== '', fn (Builder $query) => $this->cari($query, $search))
-            ->when($filters['jenis'] ?? null, fn ($query, $jenis) => $query->where('jenis', $jenis))
+            ->when($filters['jenis_rekening_id'] ?? null, fn ($query, $jenis) => $query->where('jenis_rekening_id', $jenis))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->orderBy('nomor')
             ->paginate(min(max($perPage, 5), 100))
@@ -44,7 +45,7 @@ class RekeningService
     public function cariAktif(string $search, int $limit = 10): Collection
     {
         return Rekening::query()
-            ->with('nasabah:id,nomor,nama,kelas')
+            ->with(['nasabah:id,nomor,nama,kelas', 'jenisRekening:id,nama'])
             ->where('status', Rekening::AKTIF)
             ->when($search !== '', fn (Builder $query) => $this->cari($query, $search))
             ->orderBy('nomor')
@@ -61,7 +62,7 @@ class RekeningService
         return [
             'id' => $rekening->id,
             'nomor' => $rekening->nomor,
-            'jenis' => $rekening->jenis,
+            'jenis' => $rekening->jenisRekening?->nama,
             'saldo' => $rekening->saldo,
             'status' => $rekening->status,
             'nasabah' => $rekening->nasabah?->only('id', 'nomor', 'nama', 'kelas'),
@@ -73,10 +74,14 @@ class RekeningService
      *
      * @throws ValidationException
      */
-    public function buka(Nasabah $nasabah, string $jenis, int|string $setoranAwal, ?User $user = null): Rekening
+    public function buka(Nasabah $nasabah, JenisRekening $jenis, int|string $setoranAwal, ?User $user = null): Rekening
     {
         if (! $nasabah->is_active) {
             throw ValidationException::withMessages(['nasabah_id' => 'Nasabah tidak aktif.']);
+        }
+
+        if (! $jenis->is_active) {
+            throw ValidationException::withMessages(['jenis_rekening_id' => "Jenis rekening {$jenis->nama} tidak aktif."]);
         }
 
         $minimal = $this->pengaturan->uang('setoran_awal_minimal');
@@ -91,7 +96,7 @@ class RekeningService
             $rekening = Rekening::create([
                 'nomor' => $this->nomorBerikutnya($jenis),
                 'nasabah_id' => $nasabah->id,
-                'jenis' => $jenis,
+                'jenis_rekening_id' => $jenis->id,
                 'saldo_awal' => '0.00',
                 'status' => Rekening::AKTIF,
                 'tanggal_buka' => $this->pengaturan->tanggalTransaksi(),
@@ -112,17 +117,17 @@ class RekeningService
     }
 
     /**
-     * Nomor urut per jenis, mis. TAB-000001. Nomor terakhir dikunci agar dua
-     * teller yang membuka rekening bersamaan tidak mendapat nomor sama.
+     * Nomor urut per jenis, mis. TAB-000001. Baris jenis rekening dikunci sebagai
+     * mutex agar dua teller yang membuka rekening bersamaan tidak mendapat nomor
+     * sama, termasuk untuk rekening pertama dari jenis baru.
      */
-    protected function nomorBerikutnya(string $jenis): string
+    protected function nomorBerikutnya(JenisRekening $jenis): string
     {
-        $prefix = Rekening::JENIS[$jenis]['prefix'];
+        $prefix = JenisRekening::query()->whereKey($jenis->id)->lockForUpdate()->value('prefix');
 
         $terakhir = Rekening::query()
             ->where('nomor', 'like', $prefix.'%')
             ->orderByDesc('nomor')
-            ->lockForUpdate()
             ->value('nomor');
 
         $urut = $terakhir ? (int) substr($terakhir, strlen($prefix)) + 1 : 1;

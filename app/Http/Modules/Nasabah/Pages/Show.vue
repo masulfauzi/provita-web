@@ -22,8 +22,6 @@ const props = defineProps({
 const { can } = usePermission();
 const confirm = useConfirm();
 
-const jenisRekening = { tabungan: 'Tabungan' };
-
 const label = (options, value) => options.find((o) => o.value === value)?.label ?? value ?? '-';
 const isSiswa = computed(() => props.item.jenis === 'siswa');
 
@@ -110,7 +108,7 @@ function toggleActive() {
             <template #empty>Nasabah ini belum memiliki rekening.</template>
             <Column field="nomor" header="Nomor rekening" />
             <Column header="Jenis">
-                <template #body="{ data }">{{ jenisRekening[data.jenis] ?? data.jenis }}</template>
+                <template #body="{ data }">{{ data.jenis_rekening?.nama }}</template>
             </Column>
             <Column header="Saldo" class="text-right">
                 <template #body="{ data }"><MoneyText :value="data.saldo" /></template>

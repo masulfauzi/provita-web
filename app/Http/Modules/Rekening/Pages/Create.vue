@@ -23,7 +23,7 @@ const nasabahTerpilih = ref(props.nasabah?.is_active ? props.nasabah : null);
 
 const form = useForm({
     nasabah_id: nasabahTerpilih.value?.id ?? null,
-    jenis: 'tabungan',
+    jenis_rekening_id: props.jenisOptions[0]?.value ?? null,
     setoran_awal: Number(props.setoranAwalMinimal) > 0 ? Number(props.setoranAwalMinimal) : null,
 });
 
@@ -78,16 +78,17 @@ function submit() {
         </div>
 
         <div class="flex flex-col gap-2">
-            <label for="jenis" class="font-medium">Jenis rekening</label>
+            <label for="jenis_rekening_id" class="font-medium">Jenis rekening</label>
             <Select
-                v-model="form.jenis"
-                input-id="jenis"
+                v-model="form.jenis_rekening_id"
+                input-id="jenis_rekening_id"
                 :options="jenisOptions"
                 option-label="label"
                 option-value="value"
-                :invalid="!!form.errors.jenis"
+                placeholder="Pilih jenis rekening"
+                :invalid="!!form.errors.jenis_rekening_id"
             />
-            <FieldError :message="form.errors.jenis" />
+            <FieldError :message="form.errors.jenis_rekening_id" />
         </div>
 
         <div class="flex flex-col gap-2">

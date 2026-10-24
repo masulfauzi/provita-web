@@ -3,6 +3,7 @@
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Database\Seeders\PengaturanSeeder;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
+use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Services\RekeningService;
 use App\Http\Modules\Transaksi\Services\TransaksiService;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -42,8 +43,8 @@ it('menghitung setoran, penarikan, kas, dan nasabah pada tanggal transaksi aktif
     $rekening = app(RekeningService::class);
     $transaksi = app(TransaksiService::class);
 
-    $a = $rekening->buka(Nasabah::factory()->create(), 'tabungan', 100000);
-    $b = $rekening->buka(Nasabah::factory()->create(), 'tabungan', 30000);
+    $a = $rekening->buka(Nasabah::factory()->create(), JenisRekening::kode('tabungan'), 100000);
+    $b = $rekening->buka(Nasabah::factory()->create(), JenisRekening::kode('tabungan'), 30000);
     Nasabah::factory()->nonaktif()->create();
 
     $transaksi->setor($a, 50000);
@@ -61,7 +62,7 @@ it('menghitung setoran, penarikan, kas, dan nasabah pada tanggal transaksi aktif
 });
 
 it('tidak menghitung transaksi pada tanggal lain', function () {
-    $rekening = app(RekeningService::class)->buka(Nasabah::factory()->create(), 'tabungan', 100000);
+    $rekening = app(RekeningService::class)->buka(Nasabah::factory()->create(), JenisRekening::kode('tabungan'), 100000);
 
     $this->pengaturan->set('tanggal_transaksi', '2026-10-23');
     app(TransaksiService::class)->setor($rekening, 40000);
@@ -74,7 +75,7 @@ it('tidak menghitung transaksi pada tanggal lain', function () {
 });
 
 it('koreksi setoran mengurangi saldo kas', function () {
-    $rekening = app(RekeningService::class)->buka(Nasabah::factory()->create(), 'tabungan', 100000);
+    $rekening = app(RekeningService::class)->buka(Nasabah::factory()->create(), JenisRekening::kode('tabungan'), 100000);
     $setoran = app(TransaksiService::class)->setor($rekening, 50000);
     app(TransaksiService::class)->balik($setoran);
 

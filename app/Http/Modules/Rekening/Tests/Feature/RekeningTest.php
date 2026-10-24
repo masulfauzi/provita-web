@@ -3,6 +3,7 @@
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Database\Seeders\PengaturanSeeder;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
+use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Http\Modules\Transaksi\Models\Transaksi;
 use App\Http\Modules\Transaksi\Services\TransaksiService;
@@ -21,7 +22,7 @@ function bukaRekening(array $data = []): TestResponse
 {
     return test()->actingAs(test()->teller)->post('/rekening', [
         'nasabah_id' => test()->nasabah->id,
-        'jenis' => 'tabungan',
+        'jenis_rekening_id' => JenisRekening::kode('tabungan')->id,
         'setoran_awal' => 50000,
         ...$data,
     ]);
@@ -33,7 +34,7 @@ it('teller membuka rekening tabungan dengan setoran awal', function () {
     $rekening = Rekening::firstOrFail();
 
     expect($rekening->nomor)->toBe('TAB-000001')
-        ->and($rekening->jenis)->toBe('tabungan')
+        ->and($rekening->jenisRekening->kode)->toBe('tabungan')
         ->and($rekening->nasabah_id)->toBe($this->nasabah->id)
         ->and($rekening->saldo)->toBe('50000.00')
         ->and($rekening->transaksi()->first())
@@ -64,7 +65,8 @@ it('jenis rekening default tabungan', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Rekening::Create')
             ->where('nasabah.id', $this->nasabah->id)
-            ->where('jenisOptions.0.value', 'tabungan')
+            ->where('jenisOptions.0.value', JenisRekening::kode('tabungan')->id)
+            ->where('jenisOptions.0.label', 'Tabungan')
             ->where('setoranAwalMinimal', '10000.00'));
 });
 

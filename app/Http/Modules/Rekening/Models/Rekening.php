@@ -15,7 +15,7 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property string $nomor
- * @property string $jenis
+ * @property string $jenis_rekening_id
  * @property string $status
  * @property string $saldo_awal
  * @property string $saldo
@@ -24,13 +24,6 @@ class Rekening extends Model
 {
     /** @use HasFactory<RekeningFactory> */
     use HasFactory, HasUuids, LogsActivity;
-
-    /**
-     * Jenis rekening => [label, prefix nomor].
-     */
-    public const JENIS = [
-        'tabungan' => ['label' => 'Tabungan', 'prefix' => 'TAB-'],
-    ];
 
     public const AKTIF = 'aktif';
 
@@ -41,7 +34,7 @@ class Rekening extends Model
     protected $fillable = [
         'nomor',
         'nasabah_id',
-        'jenis',
+        'jenis_rekening_id',
         'saldo_awal',
         'status',
         'tanggal_buka',
@@ -69,6 +62,14 @@ class Rekening extends Model
     public function nasabah(): BelongsTo
     {
         return $this->belongsTo(Nasabah::class);
+    }
+
+    /**
+     * @return BelongsTo<JenisRekening, $this>
+     */
+    public function jenisRekening(): BelongsTo
+    {
+        return $this->belongsTo(JenisRekening::class);
     }
 
     /**
