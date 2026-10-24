@@ -142,6 +142,7 @@ class RekeningService
             ->orWhereHas('nasabah', fn (Builder $n) => $n
                 ->where('nama', 'like', "%{$search}%")
                 ->orWhere('nis', 'like', "%{$search}%")
+                ->orWhere('nisn', 'like', "%{$search}%")
                 ->orWhere('nomor', 'like', "%{$search}%")));
     }
 }

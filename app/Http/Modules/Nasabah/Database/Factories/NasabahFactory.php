@@ -22,6 +22,7 @@ class NasabahFactory extends Factory
         return [
             'nomor' => fake()->unique()->numerify('TES-######'),
             'nis' => fake()->unique()->numerify('######'),
+            'nisn' => fake()->unique()->numerify('00########'),
             'nama' => fake()->name($jenisKelamin === 'L' ? 'male' : 'female'),
             'jenis' => 'siswa',
             'jenis_kelamin' => $jenisKelamin,

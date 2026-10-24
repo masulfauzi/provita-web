@@ -91,7 +91,7 @@ function submit() {
                 input-id="rekening"
                 :suggestions="suggestions"
                 :option-label="label"
-                placeholder="Ketik nomor rekening, nama nasabah, atau NIS"
+                placeholder="Ketik nomor rekening, nama nasabah, NIS, atau NISN"
                 :invalid="!!form.errors.rekening_id"
                 fluid
                 force-selection

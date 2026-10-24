@@ -56,7 +56,7 @@ function submit() {
                 input-id="nasabah"
                 :suggestions="suggestions"
                 :option-label="labelNasabah"
-                placeholder="Ketik nama, nomor nasabah, atau NIS"
+                placeholder="Ketik nama, nomor nasabah, NIS, atau NISN"
                 :invalid="!!form.errors.nasabah_id"
                 fluid
                 force-selection
@@ -69,6 +69,7 @@ function submit() {
                         <div>{{ option.nama }}</div>
                         <div class="text-xs text-muted-color">
                             {{ option.nomor }}<span v-if="option.nis"> · NIS {{ option.nis }}</span>
+                            <span v-if="option.nisn"> · NISN {{ option.nisn }}</span>
                             <span v-if="option.kelas"> · {{ option.kelas }}</span>
                         </div>
                     </div>

@@ -119,3 +119,55 @@ it('mencatat perubahan data nasabah ke log aktivitas', function () {
         'causer_id' => $this->teller->id,
     ]);
 });
+
+it('menyimpan dan mengubah NISN siswa', function () {
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['nisn' => '0012 345 678']))
+        ->assertSessionHasNoErrors();
+
+    $nasabah = Nasabah::where('nama', 'Siti Aminah')->firstOrFail();
+    expect($nasabah->nisn)->toBe('0012345678');
+
+    $this->actingAs($this->teller)->get("/nasabah/{$nasabah->id}")
+        ->assertInertia(fn (Assert $page) => $page->where('item.nisn', '0012345678'));
+
+    // Menyimpan ulang NISN miliknya sendiri tidak dianggap duplikat.
+    $this->actingAs($this->teller)->put("/nasabah/{$nasabah->id}", dataNasabah(['nisn' => '0012345678', 'no_hp' => '0899999999']))
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($this->teller)->put("/nasabah/{$nasabah->id}", dataNasabah(['nisn' => '0098765432']))
+        ->assertSessionHasNoErrors();
+    expect($nasabah->fresh()->nisn)->toBe('0098765432');
+});
+
+it('NISN boleh kosong, harus 10 digit, dan unik', function () {
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['nisn' => '']))->assertSessionHasNoErrors();
+    expect(Nasabah::firstOrFail()->nisn)->toBeNull();
+
+    Nasabah::factory()->create(['nisn' => '0011111111']);
+
+    foreach (['12345', '00123456789', '00123abc45', '0011111111'] as $nisn) {
+        $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['nis' => '99999', 'nisn' => $nisn]))
+            ->assertSessionHasErrors('nisn');
+    }
+});
+
+it('NISN diabaikan untuk nasabah bukan siswa', function () {
+    $this->actingAs($this->teller)
+        ->post('/nasabah', dataNasabah(['jenis' => 'guru', 'nisn' => '0012345678']))
+        ->assertSessionHasNoErrors();
+
+    expect(Nasabah::firstOrFail()->nisn)->toBeNull();
+});
+
+it('mencari nasabah berdasarkan NISN', function () {
+    Nasabah::factory()->create(['nama' => 'Dewi Kartika', 'nisn' => '0055512345']);
+    Nasabah::factory()->count(2)->create();
+
+    $this->actingAs($this->teller)->get('/nasabah?search=0055512345')
+        ->assertInertia(fn (Assert $page) => $page->has('items.data', 1)->where('items.data.0.nama', 'Dewi Kartika'));
+
+    $this->actingAs($this->teller)->getJson('/nasabah/cari?q=0055512345')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.nisn', '0055512345');
+});

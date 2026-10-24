@@ -91,7 +91,7 @@ function lihat(event) {
                 <div class="flex flex-wrap gap-2">
                     <IconField>
                         <InputIcon class="pi pi-search" />
-                        <InputText v-model="search" placeholder="Cari nama, nomor, NIS..." />
+                        <InputText v-model="search" placeholder="Cari nama, nomor, NIS, NISN..." />
                     </IconField>
                     <Select
                         v-model="filter.jenis"
@@ -115,7 +115,12 @@ function lihat(event) {
             <template #empty>Belum ada nasabah.</template>
 
             <Column field="nomor" header="Nomor" class="whitespace-nowrap" />
-            <Column field="nis" header="NIS/NIP" />
+            <Column header="NIS/NIP">
+                <template #body="{ data }">
+                    <div>{{ data.nis || '-' }}</div>
+                    <div v-if="data.nisn" class="text-xs text-muted-color">NISN {{ data.nisn }}</div>
+                </template>
+            </Column>
             <Column field="nama" header="Nama" />
             <Column field="kelas" header="Kelas">
                 <template #body="{ data }">{{ data.kelas || '-' }}</template>

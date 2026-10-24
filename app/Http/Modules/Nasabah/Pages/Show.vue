@@ -28,6 +28,7 @@ const isSiswa = computed(() => props.item.jenis === 'siswa');
 const rincian = computed(() => [
     ['Nomor nasabah', props.item.nomor],
     [isSiswa.value ? 'NIS' : 'NIP / No. pegawai', props.item.nis],
+    ...(isSiswa.value ? [['NISN', props.item.nisn]] : []),
     ['Jenis nasabah', label(props.jenisOptions, props.item.jenis)],
     ['Jenis kelamin', label(props.jenisKelaminOptions, props.item.jenis_kelamin)],
     ...(isSiswa.value ? [['Kelas', props.item.kelas]] : []),

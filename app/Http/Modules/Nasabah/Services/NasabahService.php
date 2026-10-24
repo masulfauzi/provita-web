@@ -21,7 +21,8 @@ class NasabahService
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->where('nama', 'like', "%{$search}%")
                 ->orWhere('nomor', 'like', "%{$search}%")
-                ->orWhere('nis', 'like', "%{$search}%")))
+                ->orWhere('nis', 'like', "%{$search}%")
+                ->orWhere('nisn', 'like', "%{$search}%")))
             ->when($filters['jenis'] ?? null, fn ($query, $jenis) => $query->where('jenis', $jenis))
             ->when($filters['kelas'] ?? null, fn ($query, $kelas) => $query->where('kelas', $kelas))
             ->when(($filters['status'] ?? null) === 'aktif', fn ($query) => $query->where('is_active', true))
@@ -41,10 +42,11 @@ class NasabahService
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->where('nama', 'like', "%{$search}%")
                 ->orWhere('nomor', 'like', "%{$search}%")
-                ->orWhere('nis', 'like', "%{$search}%")))
+                ->orWhere('nis', 'like', "%{$search}%")
+                ->orWhere('nisn', 'like', "%{$search}%")))
             ->orderBy('nama')
             ->limit($limit)
-            ->get(['id', 'nomor', 'nis', 'nama', 'kelas']);
+            ->get(['id', 'nomor', 'nis', 'nisn', 'nama', 'kelas']);
     }
 
     /**

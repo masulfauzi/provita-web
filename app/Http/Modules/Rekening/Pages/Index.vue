@@ -84,7 +84,7 @@ function onPage(event) {
                 <div class="flex flex-wrap gap-2">
                     <IconField>
                         <InputIcon class="pi pi-search" />
-                        <InputText v-model="search" placeholder="Cari nomor rekening, nama, NIS..." />
+                        <InputText v-model="search" placeholder="Cari nomor rekening, nama, NIS, NISN..." />
                     </IconField>
                     <Select
                         v-model="filter.jenis_rekening_id"

@@ -55,6 +55,18 @@ const isSiswa = computed(() => props.form.jenis === 'siswa');
                     <InputText id="nis" v-model="form.nis" :invalid="!!form.errors.nis" />
                     <FieldError :message="form.errors.nis" />
                 </div>
+                <div v-if="isSiswa" class="flex flex-col gap-2">
+                    <label for="nisn" class="font-medium">NISN</label>
+                    <InputText
+                        id="nisn"
+                        v-model="form.nisn"
+                        inputmode="numeric"
+                        maxlength="10"
+                        placeholder="10 digit"
+                        :invalid="!!form.errors.nisn"
+                    />
+                    <FieldError :message="form.errors.nisn" />
+                </div>
                 <div class="flex flex-col gap-2">
                     <label for="jenis_kelamin" class="font-medium">Jenis kelamin</label>
                     <Select

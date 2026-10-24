@@ -2,6 +2,7 @@ import { useForm } from '@inertiajs/vue3';
 
 const KOSONG = {
     nis: '',
+    nisn: '',
     nama: '',
     jenis: 'siswa',
     jenis_kelamin: null,
@@ -39,6 +40,7 @@ export function useNasabahForm(item = null) {
     form.transform((data) => ({
         ...data,
         tanggal_lahir: toDateString(data.tanggal_lahir),
+        nisn: data.jenis === 'siswa' ? data.nisn : null,
         kelas: data.jenis === 'siswa' ? data.kelas : null,
         nama_orang_tua: data.jenis === 'siswa' ? data.nama_orang_tua : null,
     }));
