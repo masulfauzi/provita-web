@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\Money;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -92,20 +93,32 @@ class RekeningService
             ]);
         }
 
-        return DB::transaction(function () use ($nasabah, $jenis, $setoranAwal, $user) {
-            $rekening = Rekening::create([
-                'nomor' => $this->nomorBerikutnya($jenis),
-                'nasabah_id' => $nasabah->id,
-                'jenis_rekening_id' => $jenis->id,
-                'saldo_awal' => '0.00',
-                'status' => Rekening::AKTIF,
-                'tanggal_buka' => $this->pengaturan->tanggalTransaksi(),
-            ]);
+        $dasar = $this->nomorDasar($nasabah);
 
-            $this->transaksi->setor($rekening, $setoranAwal, $user, 'Setoran awal');
+        // Nomor yang sama bisa direbut nasabah lain di saat bersamaan (mis. prefix 2 + NISN
+        // 0012345678 = NISN 2001234567 + suffix 8); unique index menolak, lalu dicoba lagi.
+        for ($percobaan = 1; ; $percobaan++) {
+            try {
+                return DB::transaction(function () use ($nasabah, $jenis, $dasar, $setoranAwal, $user) {
+                    $rekening = Rekening::create([
+                        'nomor' => $this->nomorBerikutnya($jenis, $nasabah, $dasar),
+                        'nasabah_id' => $nasabah->id,
+                        'jenis_rekening_id' => $jenis->id,
+                        'saldo_awal' => '0.00',
+                        'status' => Rekening::AKTIF,
+                        'tanggal_buka' => $this->pengaturan->tanggalTransaksi(),
+                    ]);
 
-            return $rekening->refresh();
-        }, 3);
+                    $this->transaksi->setor($rekening, $setoranAwal, $user, 'Setoran awal');
+
+                    return $rekening->refresh();
+                }, 3);
+            } catch (UniqueConstraintViolationException $e) {
+                if ($percobaan >= 3) {
+                    throw $e;
+                }
+            }
+        }
     }
 
     /**
@@ -117,22 +130,52 @@ class RekeningService
     }
 
     /**
-     * Nomor urut per jenis, mis. TAB-000001. Baris jenis rekening dikunci sebagai
-     * mutex agar dua teller yang membuka rekening bersamaan tidak mendapat nomor
-     * sama, termasuk untuk rekening pertama dari jenis baru.
+     * Angka identitas nasabah sebagai dasar nomor rekening: NISN untuk siswa
+     * (NIS bila NISN belum diisi), NIP untuk guru/karyawan. Hanya digitnya yang dipakai.
+     *
+     * @throws ValidationException
      */
-    protected function nomorBerikutnya(JenisRekening $jenis): string
+    public function nomorDasar(Nasabah $nasabah): string
     {
-        $prefix = JenisRekening::query()->whereKey($jenis->id)->lockForUpdate()->value('prefix');
+        $siswa = $nasabah->jenis === 'siswa';
+        $dasar = preg_replace('/\D/', '', (string) ($siswa ? ($nasabah->nisn ?: $nasabah->nis) : $nasabah->nis));
 
-        $terakhir = Rekening::query()
-            ->where('nomor', 'like', $prefix.'%')
-            ->orderByDesc('nomor')
-            ->value('nomor');
+        if ($dasar === '') {
+            throw ValidationException::withMessages([
+                'nasabah_id' => $siswa
+                    ? "Lengkapi NISN atau NIS {$nasabah->nama} terlebih dahulu; nomor rekening dibuat dari NISN/NIS."
+                    : "Lengkapi NIP / No. pegawai {$nasabah->nama} terlebih dahulu; nomor rekening dibuat dari NIP.",
+            ]);
+        }
 
-        $urut = $terakhir ? (int) substr($terakhir, strlen($prefix)) + 1 : 1;
+        return $dasar;
+    }
 
-        return $prefix.str_pad((string) $urut, 6, '0', STR_PAD_LEFT);
+    /**
+     * Nomor = prefix angka jenis + nomor dasar, mis. 0012345678 (rekening utama,
+     * prefix kosong) atau 20012345678 (prefix 2). Bila sudah dipakai, diberi suffix
+     * urut tanpa pemisah: 00123456781, 00123456782, dst. Baris nasabah dikunci agar
+     * dua rekening nasabah yang sama tidak dibuka bersamaan dengan nomor sama.
+     */
+    protected function nomorBerikutnya(JenisRekening $jenis, Nasabah $nasabah, string $dasar): string
+    {
+        Nasabah::query()->whereKey($nasabah->id)->lockForUpdate()->value('id');
+
+        $nomor = ($jenis->prefix ?? '').$dasar;
+
+        $terpakai = Rekening::query()->where('nomor', 'like', $nomor.'%')->pluck('nomor')->flip();
+
+        if (! $terpakai->has($nomor)) {
+            return $nomor;
+        }
+
+        $suffix = 1;
+
+        while ($terpakai->has($nomor.$suffix)) {
+            $suffix++;
+        }
+
+        return $nomor.$suffix;
     }
 
     protected function cari(Builder $query, string $search): Builder

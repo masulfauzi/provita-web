@@ -16,6 +16,7 @@ class JenisRekeningService
         return JenisRekening::query()
             ->withCount('rekening')
             ->orderByDesc('is_active')
+            ->orderByRaw('prefix is null desc')
             ->orderBy('nama')
             ->get();
     }
@@ -30,8 +31,8 @@ class JenisRekeningService
     {
         return JenisRekening::query()
             ->when($hanyaAktif, fn ($query) => $query->aktif())
-            // Tabungan (jenis bawaan) selalu di urutan pertama sebagai pilihan default.
-            ->orderByRaw('kode = ? desc', [JenisRekening::TABUNGAN])
+            // Rekening utama (tanpa prefix) selalu di urutan pertama sebagai pilihan default.
+            ->orderByRaw('prefix is null desc')
             ->orderBy('nama')
             ->get(['id', 'nama'])
             ->map(fn (JenisRekening $jenis) => ['value' => $jenis->id, 'label' => $jenis->nama])
@@ -47,22 +48,14 @@ class JenisRekeningService
     }
 
     /**
-     * Kode tidak bisa diubah. Prefix hanya bisa diubah selama belum ada rekening,
-     * karena nomor rekening lama sudah memakai prefix tersebut.
+     * Kode tidak bisa diubah. Prefix boleh diubah; nomor rekening yang sudah ada
+     * tetap, hanya rekening baru yang memakai prefix baru.
      *
      * @param  array<string, mixed>  $data
-     *
-     * @throws ValidationException
      */
     public function update(JenisRekening $jenis, array $data): JenisRekening
     {
         unset($data['kode']);
-
-        if (isset($data['prefix']) && $data['prefix'] !== $jenis->prefix && $jenis->rekening()->exists()) {
-            throw ValidationException::withMessages([
-                'prefix' => 'Prefix tidak bisa diubah karena sudah ada rekening dengan jenis ini.',
-            ]);
-        }
 
         $jenis->update($data);
 

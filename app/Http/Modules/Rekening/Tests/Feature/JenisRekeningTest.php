@@ -13,13 +13,13 @@ beforeEach(function () {
 
 function dataJenis(array $data = []): array
 {
-    return ['kode' => 'tabungan_berjangka', 'nama' => 'Tabungan Berjangka', 'prefix' => 'tbj-', ...$data];
+    return ['kode' => 'tabungan_berjangka', 'nama' => 'Tabungan Berjangka', 'prefix' => ' 3 ', ...$data];
 }
 
-it('migrasi membuat jenis tabungan bawaan', function () {
+it('migrasi membuat jenis tabungan bawaan sebagai rekening utama', function () {
     expect($this->tabungan)
         ->nama->toBe('Tabungan')
-        ->prefix->toBe('TAB-')
+        ->prefix->toBeNull()
         ->is_active->toBeTrue();
 });
 
@@ -35,12 +35,12 @@ it('bendahara dan admin dapat mengelola jenis rekening', function (string $role)
     $this->actingAs($user)->post('/jenis-rekening', dataJenis())->assertRedirect()->assertSessionHasNoErrors();
 
     $jenis = JenisRekening::kode('tabungan_berjangka');
-    expect($jenis->prefix)->toBe('TBJ-');
+    expect($jenis->prefix)->toBe('3');
 
-    $this->actingAs($user)->put("/jenis-rekening/{$jenis->id}", dataJenis(['nama' => 'Tabungan Wisata', 'prefix' => 'TWS-']))
+    $this->actingAs($user)->put("/jenis-rekening/{$jenis->id}", dataJenis(['nama' => 'Tabungan Wisata', 'prefix' => '4']))
         ->assertSessionHasNoErrors();
 
-    expect($jenis->refresh())->nama->toBe('Tabungan Wisata')->prefix->toBe('TWS-');
+    expect($jenis->refresh())->nama->toBe('Tabungan Wisata')->prefix->toBe('4');
 })->with(['bendahara', 'admin']);
 
 it('teller tidak dapat mengelola jenis rekening', function () {
@@ -52,19 +52,45 @@ it('teller tidak dapat mengelola jenis rekening', function () {
 });
 
 it('memvalidasi kode, nama, dan prefix', function () {
-    $this->actingAs(userWithRole('bendahara'))
-        ->post('/jenis-rekening', ['kode' => 'Bukan Kode!', 'nama' => 'Tabungan', 'prefix' => 'TAB'])
+    $bendahara = userWithRole('bendahara');
+
+    $this->actingAs($bendahara)
+        ->post('/jenis-rekening', ['kode' => 'Bukan Kode!', 'nama' => 'Tabungan', 'prefix' => 'TAB-'])
         ->assertSessionHasErrors(['kode', 'nama', 'prefix']);
 
-    $this->actingAs(userWithRole('bendahara'))
-        ->post('/jenis-rekening', dataJenis(['kode' => 'tabungan', 'prefix' => 'TAB-']))
+    foreach (['1a', '-2', '123456'] as $prefix) {
+        $this->actingAs($bendahara)->post('/jenis-rekening', dataJenis(['prefix' => $prefix]))
+            ->assertSessionHasErrors('prefix');
+    }
+
+    JenisRekening::factory()->create(['prefix' => '5']);
+    $this->actingAs($bendahara)->post('/jenis-rekening', dataJenis(['kode' => 'tabungan', 'prefix' => '5']))
         ->assertSessionHasErrors(['kode', 'prefix']);
 });
 
+it('prefix kosong (rekening utama) hanya boleh satu jenis', function () {
+    $bendahara = userWithRole('bendahara');
+
+    $this->actingAs($bendahara)->post('/jenis-rekening', dataJenis(['prefix' => '']))
+        ->assertSessionHasErrors(['prefix' => 'Rekening utama (tanpa prefix) sudah ada: Tabungan. Isi prefix angka.']);
+
+    // Tabungan sendiri tetap boleh disimpan tanpa prefix.
+    $this->actingAs($bendahara)->put("/jenis-rekening/{$this->tabungan->id}", ['nama' => 'Tabungan', 'prefix' => null])
+        ->assertSessionHasNoErrors();
+
+    // Bila Tabungan diberi prefix, jenis lain boleh menjadi rekening utama.
+    $this->actingAs($bendahara)->put("/jenis-rekening/{$this->tabungan->id}", ['nama' => 'Tabungan', 'prefix' => '1'])
+        ->assertSessionHasNoErrors();
+    $this->actingAs($bendahara)->post('/jenis-rekening', dataJenis(['prefix' => '']))
+        ->assertSessionHasNoErrors();
+
+    expect(JenisRekening::kode('tabungan_berjangka')->prefix)->toBeNull();
+});
+
 it('jenis baru dapat dipilih teller dan nomornya memakai prefix sendiri', function () {
-    $jenis = JenisRekening::factory()->create(['nama' => 'Tabungan Berjangka', 'prefix' => 'TBJ-']);
+    $jenis = JenisRekening::factory()->create(['nama' => 'Tabungan Berjangka', 'prefix' => '7']);
     $teller = userWithRole('teller');
-    $nasabah = Nasabah::factory()->create();
+    $nasabah = Nasabah::factory()->create(['nisn' => '0098765432']);
 
     $this->actingAs($teller)->get('/rekening/create')
         ->assertInertia(fn (Assert $page) => $page
@@ -79,7 +105,7 @@ it('jenis baru dapat dipilih teller dan nomornya memakai prefix sendiri', functi
     ])->assertRedirect()->assertSessionHasNoErrors();
 
     expect(Rekening::firstOrFail())
-        ->nomor->toBe('TBJ-000001')
+        ->nomor->toBe('70098765432')
         ->jenis_rekening_id->toBe($jenis->id);
 });
 
@@ -111,22 +137,20 @@ it('bendahara dapat menonaktifkan dan mengaktifkan jenis rekening', function () 
     expect($this->tabungan->refresh()->is_active)->toBeTrue();
 });
 
-it('prefix tidak bisa diubah dan jenis tidak bisa dihapus setelah dipakai rekening', function () {
-    Rekening::factory()->create(['jenis_rekening_id' => $this->tabungan->id]);
+it('prefix boleh diubah tanpa mengubah nomor rekening lama, tetapi jenis terpakai tidak bisa dihapus', function () {
+    $wisata = JenisRekening::factory()->create(['nama' => 'Tabungan Wisata', 'prefix' => '2']);
+    $rekening = Rekening::factory()->create(['nomor' => '20012345678', 'jenis_rekening_id' => $wisata->id]);
     $bendahara = userWithRole('bendahara');
 
     $this->actingAs($bendahara)
-        ->put("/jenis-rekening/{$this->tabungan->id}", ['nama' => 'Tabungan Siswa', 'prefix' => 'TSW-'])
-        ->assertSessionHasErrors('prefix');
-
-    $this->actingAs($bendahara)
-        ->put("/jenis-rekening/{$this->tabungan->id}", ['nama' => 'Tabungan Siswa', 'prefix' => 'TAB-'])
+        ->put("/jenis-rekening/{$wisata->id}", ['nama' => 'Tabungan Wisata', 'prefix' => '8'])
         ->assertSessionHasNoErrors();
 
-    $this->actingAs($bendahara)->delete("/jenis-rekening/{$this->tabungan->id}")
+    $this->actingAs($bendahara)->delete("/jenis-rekening/{$wisata->id}")
         ->assertSessionHas('error');
 
-    expect($this->tabungan->refresh())->nama->toBe('Tabungan Siswa')->prefix->toBe('TAB-');
+    expect($wisata->refresh()->prefix)->toBe('8')
+        ->and($rekening->refresh()->nomor)->toBe('20012345678');
 });
 
 it('jenis yang belum dipakai dapat dihapus', function () {

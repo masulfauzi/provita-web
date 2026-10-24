@@ -22,9 +22,14 @@ class JenisRekeningFactory extends Factory
         return [
             'kode' => $kode,
             'nama' => 'Jenis '.substr($kode, 6),
-            'prefix' => strtoupper(fake()->unique()->lexify('X??')).'-',
+            'prefix' => fake()->unique()->numerify('9##'),
             'is_active' => true,
         ];
+    }
+
+    public function utama(): static
+    {
+        return $this->state(fn () => ['prefix' => null]);
     }
 
     public function nonaktif(): static

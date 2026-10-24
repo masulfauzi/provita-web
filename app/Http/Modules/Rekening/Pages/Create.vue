@@ -42,7 +42,10 @@ function submit() {
 <template>
     <Head title="Buka rekening" />
 
-    <PageHeader title="Buka rekening" subtitle="Nomor rekening dibuat otomatis. Setoran awal langsung tercatat." />
+    <PageHeader
+        title="Buka rekening"
+        subtitle="Nomor rekening = prefix jenis + NISN (siswa) atau NIS/NIP nasabah. Setoran awal langsung tercatat."
+    />
 
     <Message v-if="nasabah && !nasabah.is_active" severity="warn" class="mb-4 max-w-2xl">
         Nasabah {{ nasabah.nama }} tidak aktif sehingga tidak dapat dibukakan rekening.

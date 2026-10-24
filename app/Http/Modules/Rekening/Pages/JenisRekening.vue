@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -22,8 +22,9 @@ const dialog = ref(false);
 const editing = ref(null);
 const form = useForm({ kode: '', nama: '', prefix: '', keterangan: '' });
 
-// Prefix nomor tidak boleh diubah bila sudah ada rekening dengan jenis ini.
-const prefixTerkunci = computed(() => editing.value?.rekening_count > 0);
+// Contoh nomor rekening untuk siswa ber-NISN 0012345678.
+const CONTOH_NISN = '0012345678';
+const contohNomor = (prefix) => `${prefix ?? ''}${CONTOH_NISN}`;
 
 function tambah() {
     editing.value = null;
@@ -35,7 +36,7 @@ function tambah() {
 
 function ubah(item) {
     editing.value = item;
-    form.defaults({ kode: item.kode, nama: item.nama, prefix: item.prefix, keterangan: item.keterangan ?? '' });
+    form.defaults({ kode: item.kode, nama: item.nama, prefix: item.prefix ?? '', keterangan: item.keterangan ?? '' });
     form.reset();
     form.clearErrors();
     dialog.value = true;
@@ -74,8 +75,14 @@ function toggleActive(item) {
                 </template>
             </Column>
             <Column field="kode" header="Kode" />
+            <Column header="Prefix">
+                <template #body="{ data }">
+                    <span v-if="data.prefix">{{ data.prefix }}</span>
+                    <Tag v-else value="Rekening utama" severity="info" />
+                </template>
+            </Column>
             <Column header="Contoh nomor" class="whitespace-nowrap">
-                <template #body="{ data }">{{ data.prefix }}000001</template>
+                <template #body="{ data }">{{ contohNomor(data.prefix) }}</template>
             </Column>
             <Column field="rekening_count" header="Jumlah rekening" class="text-right" />
             <Column header="Status">
@@ -157,19 +164,14 @@ function toggleActive(item) {
                 <InputText
                     id="prefix"
                     v-model="form.prefix"
-                    placeholder="TBJ-"
-                    class="uppercase"
-                    :disabled="prefixTerkunci"
+                    placeholder="mis. 2"
+                    inputmode="numeric"
+                    maxlength="5"
                     :invalid="!!form.errors.prefix"
                 />
                 <small class="text-muted-color">
-                    <template v-if="prefixTerkunci"
-                        >Sudah dipakai {{ editing.rekening_count }} rekening, tidak bisa diubah.</template
-                    >
-                    <template v-else>
-                        2–8 huruf kapital diakhiri "-". Nomor rekening menjadi
-                        {{ (form.prefix || 'XXX-').toUpperCase() }}000001.
-                    </template>
+                    Angka di depan NISN/NIS nasabah, mis. {{ contohNomor(form.prefix || null) }}. Kosongkan untuk
+                    rekening utama (hanya satu jenis). Mengubah prefix tidak mengubah nomor rekening yang sudah ada.
                 </small>
                 <FieldError :message="form.errors.prefix" />
             </div>

@@ -15,7 +15,7 @@ use Spatie\Activitylog\Support\LogOptions;
 /**
  * @property string $kode
  * @property string $nama
- * @property string $prefix awalan nomor rekening, mis. TAB-
+ * @property string|null $prefix angka di depan NISN/NIS pada nomor rekening; null = rekening utama
  * @property bool $is_active
  */
 class JenisRekening extends Model

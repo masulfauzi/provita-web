@@ -5,6 +5,7 @@ namespace App\Http\Modules\Rekening\Requests;
 use App\Http\Modules\Rekening\Models\JenisRekening;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreJenisRekeningRequest extends FormRequest
 {
@@ -15,10 +16,10 @@ class StoreJenisRekeningRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(array_filter([
-            'kode' => $this->filled('kode') ? strtolower(trim($this->string('kode'))) : null,
-            'prefix' => $this->filled('prefix') ? strtoupper(trim($this->string('prefix'))) : null,
-        ], fn ($value) => $value !== null));
+        $this->merge([
+            'kode' => $this->filled('kode') ? strtolower(trim($this->string('kode'))) : $this->input('kode'),
+            'prefix' => $this->filled('prefix') ? trim($this->string('prefix')) : null,
+        ]);
     }
 
     /**
@@ -33,8 +34,7 @@ class StoreJenisRekeningRequest extends FormRequest
     }
 
     /**
-     * Prefix wajib diakhiri tanda "-" agar prefix satu jenis tidak menjadi awalan
-     * nomor jenis lain (mis. TA- dan TAB-) saat mencari nomor terakhir.
+     * Prefix berupa angka yang ditaruh di depan NISN/NIS nasabah.
      *
      * @return array<string, mixed>
      */
@@ -42,9 +42,32 @@ class StoreJenisRekeningRequest extends FormRequest
     {
         return [
             'nama' => ['required', 'string', 'max:100', Rule::unique('jenis_rekening', 'nama')->ignore($abaikan)],
-            'prefix' => ['required', 'string', 'max:10', 'regex:/^[A-Z]{2,8}-$/', Rule::unique('jenis_rekening', 'prefix')->ignore($abaikan)],
+            'prefix' => ['nullable', 'regex:/^[0-9]{1,5}$/', Rule::unique('jenis_rekening', 'prefix')->ignore($abaikan)],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    /**
+     * Prefix kosong menandai rekening utama dan hanya boleh dimiliki satu jenis.
+     *
+     * @return list<callable>
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator) {
+            if ($this->input('prefix') !== null) {
+                return;
+            }
+
+            $utama = JenisRekening::query()
+                ->whereNull('prefix')
+                ->when($this->route('jenisRekening'), fn ($query, JenisRekening $jenis) => $query->whereKeyNot($jenis->id))
+                ->value('nama');
+
+            if ($utama) {
+                $validator->errors()->add('prefix', "Rekening utama (tanpa prefix) sudah ada: {$utama}. Isi prefix angka.");
+            }
+        }];
     }
 
     public function attributes(): array
@@ -60,7 +83,7 @@ class StoreJenisRekeningRequest extends FormRequest
     {
         return [
             'kode.regex' => 'Kode hanya boleh huruf kecil, angka, dan garis bawah, diawali huruf.',
-            'prefix.regex' => 'Prefix berisi 2–8 huruf kapital dan diakhiri tanda "-", mis. TAB-.',
+            'prefix.regex' => 'Prefix hanya boleh angka (1–5 digit), mis. 2.',
         ];
     }
 }
