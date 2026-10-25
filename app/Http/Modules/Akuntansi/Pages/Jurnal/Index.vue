@@ -27,8 +27,10 @@ const filter = reactive({ sumber: props.filters.sumber ?? null });
 const sumberOptions = [
     { value: 'manual', label: 'Jurnal umum' },
     { value: 'transaksi', label: 'Transaksi tabungan' },
+    { value: 'kas', label: 'Penerimaan / pengeluaran kas' },
 ];
 
+const sumberLabel = { manual: 'Jurnal umum', transaksi: 'Transaksi', kas: 'Kas' };
 const total = (jurnal) => jurnal.detail.reduce((sum, d) => sum + Number(d.debit), 0);
 
 function reload(params = {}) {
@@ -114,7 +116,7 @@ function onPage(event) {
             <Column header="Sumber">
                 <template #body="{ data }">
                     <Tag
-                        :value="data.sumber === 'manual' ? 'Jurnal umum' : 'Transaksi'"
+                        :value="sumberLabel[data.sumber]"
                         :severity="data.sumber === 'manual' ? 'info' : 'secondary'"
                     />
                     <Tag v-if="data.pembalik" value="Dikoreksi" severity="warn" class="ml-1" />

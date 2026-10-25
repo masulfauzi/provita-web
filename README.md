@@ -84,6 +84,7 @@ app/
 │       ├── Rekening/              # jenis rekening, buka/tutup rekening, buku tabungan
 │       ├── Transaksi/             # setor, tarik, koreksi (pembalik)
 │       ├── Akuntansi/             # bagan akun, jurnal umum, jurnal otomatis dari transaksi
+│       ├── Kas/                   # penerimaan & pengeluaran kas lain-lain, bukti kas
 │       ├── Laporan/               # neraca, laba rugi, arus kas, neraca saldo, buku besar (+ Excel & cetak)
 │       └── Pinjaman/              # kerangka, diisi di issue berikutnya
 ├── Jobs/                      # HitungBungaBulanan, CekJatuhTempoDeposito
@@ -116,7 +117,7 @@ Setiap transaksi tabungan otomatis dijurnal (double-entry) di DB transaction yan
 | Biaya administrasi | Simpanan tabungan nasabah | Pendapatan administrasi |
 | Koreksi | kebalikan jurnal transaksi asal | |
 
-Transaksi lain (setoran modal, beban, pemindahan kas ke bank) dicatat bendahara lewat **Jurnal umum**. Laporan di `/laporan` dihitung dari jurnal. Catatan: `uang_modal` di Pengaturan adalah kas awal teller per sesi untuk dashboard, bukan modal pembukuan; modal bank dicatat dengan jurnal umum (D Kas / K Modal).
+Uang kas di luar tabungan dicatat teller/bendahara lewat menu **Penerimaan kas** (mis. penjualan buku tabungan, harga default di Pengaturan `harga_buku_tabungan`; D Kas / K akun pendapatan) dan **Pengeluaran kas** (mis. belanja ATK; D akun beban / K Kas, ditolak bila saldo kas kurang). Kategori diambil dari akun Pendapatan/Beban di Bagan akun; pembatalan oleh bendahara membuat jurnal pembalik. Transaksi lain (setoran modal, pemindahan kas ke bank) dicatat bendahara lewat **Jurnal umum**. Laporan di `/laporan` dihitung dari jurnal. Catatan: `uang_modal` di Pengaturan adalah kas awal teller per sesi untuk dashboard, bukan modal pembukuan; modal bank dicatat dengan jurnal umum (D Kas / K Modal).
 
 ## Deploy di VPS
 

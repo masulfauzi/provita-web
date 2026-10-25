@@ -1,0 +1,16 @@
+{
+    "name": "Kas",
+    "label": "Kas",
+    "icon": "pi pi-money-bill",
+    "order": 250,
+    "menu": [
+        { "label": "Penerimaan kas", "route": "kas.penerimaan", "icon": "pi pi-arrow-circle-down", "permission": "kas.masuk", "group": "Kas", "order": 250 },
+        { "label": "Pengeluaran kas", "route": "kas.pengeluaran", "icon": "pi pi-arrow-circle-up", "permission": "kas.keluar", "group": "Kas", "order": 251 }
+    ],
+    "permissions": {
+        "kas.lihat": { "label": "Lihat penerimaan & pengeluaran kas", "roles": ["teller"] },
+        "kas.masuk": { "label": "Mencatat penerimaan kas", "roles": ["teller"] },
+        "kas.keluar": { "label": "Mencatat pengeluaran kas", "roles": ["teller"] },
+        "kas.batal": { "label": "Membatalkan penerimaan / pengeluaran kas", "roles": [] }
+    }
+}

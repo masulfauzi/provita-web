@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Modules\Akuntansi\Models\Akun;
+use App\Http\Modules\Akuntansi\Services\JurnalService;
+use App\Http\Modules\Kas\Services\KasService;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Database\Seeders\PengaturanSeeder;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
@@ -80,4 +83,29 @@ it('koreksi setoran mengurangi saldo kas', function () {
     app(TransaksiService::class)->balik($setoran);
 
     expect(kartuDashboard()['Saldo kas hari ini']['nilai'])->toBe('600000.00');
+});
+
+it('saldo kas hari ini memperhitungkan penerimaan dan pengeluaran kas lain-lain', function () {
+    if (! class_exists(KasService::class)) {
+        $this->markTestSkipped('Modul Kas tidak terpasang.');
+    }
+
+    $pengaturan = app(PengaturanService::class);
+    $pengaturan->setMany(['uang_modal' => 50000]);
+    $tanggal = $pengaturan->tanggalTransaksi()->toDateString();
+    $akun = Akun::class;
+
+    app(JurnalService::class)->catat($tanggal, 'Modal', [
+        ['akun_id' => $akun::peran('kas')->id, 'debit' => 100000],
+        ['akun_id' => $akun::peran('modal')->id, 'kredit' => 100000],
+    ]);
+
+    $kas = app(KasService::class);
+    $kas->terima($akun::peran('pendapatan_buku_tabungan'), 5000, 'Buku');
+    $kas->keluarkan($akun::where('kode', '5-103')->firstOrFail(), 2000, 'ATK');
+
+    $this->actingAs(userWithRole('bendahara'))->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('ringkasan.0.label', 'Saldo kas hari ini')
+            ->where('ringkasan.0.nilai', '53000.00'));
 });

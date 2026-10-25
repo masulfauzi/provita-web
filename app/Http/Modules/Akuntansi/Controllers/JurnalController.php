@@ -7,6 +7,7 @@ use App\Http\Modules\Akuntansi\Models\Jurnal;
 use App\Http\Modules\Akuntansi\Requests\SimpanJurnalRequest;
 use App\Http\Modules\Akuntansi\Services\AkunService;
 use App\Http\Modules\Akuntansi\Services\JurnalService;
+use App\Http\Modules\Kas\Models\Kas;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,7 +68,12 @@ class JurnalController extends Controller
             'transaksi:id,rekening_id,jenis',
         ]);
 
-        return Inertia::render('Akuntansi::Jurnal/Show', ['jurnal' => $jurnal]);
+        // Bukti kas asal (modul Kas) bila jurnal ini berasal dari penerimaan/pengeluaran kas.
+        $kas = $jurnal->sumber === Jurnal::KAS && class_exists(Kas::class)
+            ? Kas::query()->where('jurnal_id', $jurnal->id)->orWhere('jurnal_batal_id', $jurnal->id)->first(['id', 'nomor'])
+            : null;
+
+        return Inertia::render('Akuntansi::Jurnal/Show', ['jurnal' => $jurnal, 'kas' => $kas]);
     }
 
     public function balik(Request $request, Jurnal $jurnal): RedirectResponse

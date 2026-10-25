@@ -39,7 +39,8 @@ class DashboardController extends Controller
             $modal = class_exists(PengaturanService::class) ? app(PengaturanService::class)->uang('uang_modal') : '0.00';
 
             $kartu[] = $this->kartu('Saldo kas hari ini', Money::add($modal, $harian['mutasi_kas']), 'uang', 'pi pi-wallet',
-                'Modal '.Money::format($modal).' + mutasi kas '.Money::format($harian['mutasi_kas']));
+                'Modal '.Money::format($modal).' + mutasi kas '.Money::format($harian['mutasi_kas'])
+                .(Money::compare($harian['kas_lain'], 0) !== 0 ? ' (termasuk kas lain-lain '.Money::format($harian['kas_lain']).')' : ''));
             $kartu[] = $this->kartu('Setoran hari ini', $harian['setoran'], 'uang', 'pi pi-arrow-down',
                 $harian['jumlah_setoran'].' transaksi', '/rekening');
             $kartu[] = $this->kartu('Penarikan hari ini', $harian['penarikan'], 'uang', 'pi pi-arrow-up',

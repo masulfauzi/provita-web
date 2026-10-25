@@ -69,13 +69,39 @@ class JurnalService
     }
 
     /**
-     * Jurnal pembalik untuk jurnal manual: debit & kredit ditukar, tanggal = tanggal transaksi aktif.
+     * Jurnal dari modul lain (mis. penerimaan/pengeluaran kas). Pemanggil menjalankannya
+     * di dalam DB transaction miliknya agar catatan modul dan jurnal tersimpan bersama.
+     *
+     * @param  list<array{akun_id: string, debit?: int|string|null, kredit?: int|string|null, keterangan?: string|null}>  $baris
      *
      * @throws ValidationException
      */
-    public function balik(Jurnal $jurnal, ?User $user = null, ?string $alasan = null): Jurnal
+    public function catatOtomatis(string $sumber, Carbon|string $tanggal, string $keterangan, array $baris, ?User $user = null): Jurnal
     {
-        if ($jurnal->sumber !== Jurnal::MANUAL) {
+        return $this->simpan([
+            'tanggal' => Carbon::parse($tanggal)->toDateString(),
+            'keterangan' => mb_strimwidth($keterangan, 0, 255),
+            'sumber' => $sumber,
+            'user_id' => $user?->id,
+        ], $baris);
+    }
+
+    /**
+     * Jurnal pembalik: debit & kredit ditukar, tanggal = tanggal transaksi aktif. Dari halaman
+     * jurnal hanya jurnal manual yang bisa dikoreksi; jurnal kas dibalik lewat pembatalan kas
+     * ($dariModul), jurnal transaksi lewat koreksi di buku tabungan.
+     *
+     * @throws ValidationException
+     */
+    public function balik(Jurnal $jurnal, ?User $user = null, ?string $alasan = null, bool $dariModul = false): Jurnal
+    {
+        if ($jurnal->sumber === Jurnal::KAS && ! $dariModul) {
+            throw ValidationException::withMessages([
+                'jurnal' => 'Jurnal dari penerimaan/pengeluaran kas dikoreksi dengan membatalkan bukti kasnya.',
+            ]);
+        }
+
+        if (! in_array($jurnal->sumber, [Jurnal::MANUAL, Jurnal::KAS], true)) {
             throw ValidationException::withMessages([
                 'jurnal' => 'Jurnal dari transaksi tabungan dikoreksi lewat koreksi transaksi di buku tabungan.',
             ]);
@@ -95,8 +121,8 @@ class JurnalService
 
             return $this->simpan([
                 'tanggal' => $this->pengaturan->tanggalTransaksi()->toDateString(),
-                'keterangan' => $alasan ? "Koreksi {$jurnal->nomor}: {$alasan}" : "Koreksi {$jurnal->nomor}",
-                'sumber' => Jurnal::MANUAL,
+                'keterangan' => mb_strimwidth($alasan ? "Koreksi {$jurnal->nomor}: {$alasan}" : "Koreksi {$jurnal->nomor}", 0, 255),
+                'sumber' => $jurnal->sumber,
                 'pembalik_dari_id' => $jurnal->id,
                 'user_id' => $user?->id,
             ], $jurnal->detail()->get()->map(fn ($detail) => [
@@ -143,6 +169,27 @@ class JurnalService
             ['akun_id' => Akun::peran($debit)->id, 'debit' => $transaksi->nominal],
             ['akun_id' => Akun::peran($kredit)->id, 'kredit' => $transaksi->nominal],
         ]);
+    }
+
+    /**
+     * Mengunci mutex jurnal (baris akun kas). Dipanggil di dalam DB transaction sebelum
+     * memeriksa saldo kas, sehingga pemeriksaan dan pencatatan tidak bisa diselip proses lain.
+     */
+    public function kunci(): void
+    {
+        Akun::query()->where('peran', Akun::KAS)->lockForUpdate()->value('id');
+    }
+
+    /**
+     * Saldo akun kas dari seluruh jurnal.
+     */
+    public function saldoKas(): string
+    {
+        $saldo = DB::table('jurnal_detail')
+            ->where('akun_id', Akun::peran(Akun::KAS)->id)
+            ->first([DB::raw('SUM(debit) as debit'), DB::raw('SUM(kredit) as kredit')]);
+
+        return Money::sub((string) ($saldo->debit ?? '0'), (string) ($saldo->kredit ?? '0'));
     }
 
     /**
@@ -220,7 +267,7 @@ class JurnalService
      */
     protected function nomorBerikutnya(string $tanggal): string
     {
-        Akun::query()->where('peran', Akun::KAS)->lockForUpdate()->value('id');
+        $this->kunci();
 
         $prefix = 'JU-'.substr($tanggal, 0, 4).'-';
         $terakhir = Jurnal::query()->where('nomor', 'like', $prefix.'%')->orderByDesc('nomor')->value('nomor');

@@ -21,6 +21,7 @@ class PengaturanSeeder extends Seeder
         ['kunci' => 'suku_bunga_tabungan', 'label' => 'Suku bunga tabungan per tahun', 'tipe' => 'persen', 'grup' => 'keuangan', 'nilai' => '0'],
         ['kunci' => 'setoran_awal_minimal', 'label' => 'Setoran awal minimal', 'tipe' => 'uang', 'grup' => 'keuangan', 'nilai' => '0.00'],
         ['kunci' => 'adm_penutupan', 'label' => 'Biaya administrasi penutupan', 'tipe' => 'uang', 'grup' => 'keuangan', 'nilai' => '0.00'],
+        ['kunci' => 'harga_buku_tabungan', 'label' => 'Harga buku tabungan', 'tipe' => 'uang', 'grup' => 'keuangan', 'nilai' => '0.00', 'keterangan' => 'Nominal default saat mencatat penjualan buku tabungan di Penerimaan kas.'],
         ['kunci' => 'nama_bank', 'label' => 'Nama bank', 'tipe' => 'teks', 'grup' => 'umum', 'nilai' => 'Bank Provita'],
         ['kunci' => 'nama_sekolah', 'label' => 'Nama sekolah', 'tipe' => 'teks', 'grup' => 'umum', 'nilai' => 'SMK Negeri 2 Semarang'],
         ['kunci' => 'alamat_sekolah', 'label' => 'Alamat sekolah', 'tipe' => 'teks', 'grup' => 'umum', 'nilai' => null],

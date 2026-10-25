@@ -27,6 +27,8 @@ class Jurnal extends Model
 
     public const TRANSAKSI = 'transaksi';
 
+    public const KAS = 'kas';
+
     protected $table = 'jurnal';
 
     protected $fillable = [

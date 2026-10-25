@@ -14,6 +14,7 @@ import { usePermission } from '@/composables/usePermission';
 
 const props = defineProps({
     jurnal: { type: Object, required: true },
+    kas: { type: Object, default: null },
 });
 
 const { can } = usePermission();
@@ -73,6 +74,9 @@ function koreksi() {
                 <dt class="text-sm text-muted-color">Sumber</dt>
                 <dd>
                     <Tag v-if="jurnal.sumber === 'manual'" value="Jurnal umum" severity="info" />
+                    <Link v-else-if="kas" :href="`/kas/${kas.id}`" class="text-primary hover:underline"
+                        >Bukti kas {{ kas.nomor }} <i class="pi pi-external-link text-xs"
+                    /></Link>
                     <Link
                         v-else-if="jurnal.transaksi && can('rekening.lihat')"
                         :href="`/rekening/${jurnal.transaksi.rekening_id}`"

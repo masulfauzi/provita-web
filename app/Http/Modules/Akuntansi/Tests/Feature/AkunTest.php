@@ -8,7 +8,8 @@ beforeEach(function () {
 });
 
 it('migrasi membuat bagan akun bawaan dengan akun sistem', function () {
-    expect(Akun::count())->toBe(10)
+    // Modul lain (mis. Kas) boleh menambah akun bawaan sendiri.
+    expect(Akun::count())->toBeGreaterThanOrEqual(10)
         ->and(Akun::peran('kas')->kode)->toBe('1-101')
         ->and(Akun::peran('simpanan')->kategori)->toBe('kewajiban')
         ->and(Akun::peran('pendapatan_administrasi')->kategori)->toBe('pendapatan');
@@ -16,13 +17,13 @@ it('migrasi membuat bagan akun bawaan dengan akun sistem', function () {
 
 it('bendahara menambah dan mengubah akun', function () {
     $this->actingAs($this->bendahara)
-        ->post('/akun', ['kode' => '5-103', 'nama' => 'Beban ATK', 'kategori' => 'beban'])
+        ->post('/akun', ['kode' => '5-199', 'nama' => 'Beban ATK', 'kategori' => 'beban'])
         ->assertSessionHasNoErrors();
 
-    $akun = Akun::where('kode', '5-103')->firstOrFail();
+    $akun = Akun::where('kode', '5-199')->firstOrFail();
 
     $this->actingAs($this->bendahara)
-        ->put("/akun/{$akun->id}", ['kode' => '5-103', 'nama' => 'Beban alat tulis', 'kategori' => 'aset'])
+        ->put("/akun/{$akun->id}", ['kode' => '5-199', 'nama' => 'Beban alat tulis', 'kategori' => 'aset'])
         ->assertSessionHasNoErrors();
 
     expect($akun->refresh())->nama->toBe('Beban alat tulis')->kategori->toBe('aset');
@@ -53,8 +54,10 @@ it('akun sistem dan akun terpakai terlindungi', function () {
     $this->actingAs($this->bendahara)->delete("/akun/{$beban->id}")->assertSessionHas('error');
 
     $this->actingAs($this->bendahara)->patch("/akun/{$beban->id}/aktif")->assertSessionHas('success');
+    $jumlah = Akun::count();
     expect($beban->refresh()->is_active)->toBeFalse()
-        ->and(Akun::count())->toBe(10);
+        ->and(Akun::whereIn('id', [$kas->id, $beban->id])->count())->toBe(2)
+        ->and(Akun::count())->toBe($jumlah);
 });
 
 it('akun yang belum dipakai dapat dihapus', function () {

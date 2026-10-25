@@ -200,5 +200,5 @@ it('hanya bendahara yang membuka jurnal dan bagan akun', function (string $role)
     $this->actingAs($this->bendahara)->get('/jurnal')->assertOk();
     $this->actingAs($this->bendahara)->get('/jurnal/create')
         ->assertInertia(fn (Assert $page) => $page->component('Akuntansi::Jurnal/Create')->where('tanggal', '2026-10-22'));
-    $this->actingAs($this->bendahara)->get('/akun')->assertInertia(fn (Assert $page) => $page->has('items', 10));
+    $this->actingAs($this->bendahara)->get('/akun')->assertInertia(fn (Assert $page) => $page->has('items', Akun::count()));
 })->with(['teller', 'admin']);
