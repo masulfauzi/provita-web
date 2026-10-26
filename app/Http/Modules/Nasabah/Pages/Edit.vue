@@ -25,6 +25,7 @@ function submit() {
     <PageHeader title="Ubah nasabah" :subtitle="`${item.nomor} · ${item.nama}`" />
 
     <NasabahForm
+        mode="edit"
         :form="form"
         :kelas="kelas"
         :jenis-options="jenisOptions"

@@ -7,6 +7,7 @@ import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import { computed, ref } from 'vue';
 import FieldError from '@/Components/FieldError.vue';
+import PeriksaNisn from './PeriksaNisn.vue';
 
 const props = defineProps({
     form: { type: Object, required: true },
@@ -14,6 +15,8 @@ const props = defineProps({
     jenisOptions: { type: Array, default: () => [] },
     jenisKelaminOptions: { type: Array, default: () => [] },
     submitLabel: { type: String, default: 'Simpan' },
+    // "create": siswa wajib memeriksa NISN dulu sebelum mengisi form; "edit": periksa opsional.
+    mode: { type: String, default: 'create' },
 });
 
 defineEmits(['submit']);
@@ -26,6 +29,39 @@ function cariKelas(event) {
 
 const hariIni = new Date();
 const isSiswa = computed(() => props.form.jenis === 'siswa');
+
+// Hasil pemeriksaan NISN terakhir; hanya berlaku selama NISN di form tidak diubah.
+const hasil = ref(null);
+const perluPeriksa = computed(() => props.mode === 'create' && isSiswa.value);
+const terbuka = computed(
+    () =>
+        !perluPeriksa.value ||
+        (hasil.value?.nisn === props.form.nisn &&
+            ['ditemukan', 'tidak_ditemukan', 'gagal'].includes(hasil.value.status)),
+);
+
+// Field yang terakhir diisi dari API; dikosongkan lagi saat NISN lain diperiksa,
+// supaya data siswa sebelumnya tidak ikut tersimpan dengan NISN yang baru.
+let dariApi = [];
+
+function terimaHasil(value) {
+    hasil.value = value;
+
+    for (const kunci of dariApi) {
+        if (kunci !== 'nisn') props.form[kunci] = '';
+    }
+    dariApi = [];
+
+    if (value.status !== 'ditemukan') return;
+
+    // Semua data dari API menimpa isian form; field yang kosong di API dibiarkan.
+    for (const [kunci, nilai] of Object.entries(value.data)) {
+        if (!nilai) continue;
+        props.form[kunci] = nilai;
+        dariApi.push(kunci);
+    }
+    props.form.clearErrors();
+}
 </script>
 
 <template>
@@ -45,9 +81,24 @@ const isSiswa = computed(() => props.form.jenis === 'siswa');
                     />
                     <FieldError :message="form.errors.jenis" />
                 </div>
+                <PeriksaNisn
+                    v-if="isSiswa"
+                    v-model="form.nisn"
+                    :error="form.errors.nisn"
+                    :hasil="hasil"
+                    @hasil="terimaHasil"
+                />
+            </div>
+
+            <p v-if="!terbuka" class="mt-4 text-muted-color">
+                <i class="pi pi-info-circle" /> Masukkan NISN siswa lalu klik <strong>Periksa</strong>. Data dari sistem
+                sekolah akan diisikan otomatis.
+            </p>
+
+            <div v-if="terbuka" class="mt-5 grid gap-5 md:grid-cols-2">
                 <div class="flex flex-col gap-2">
                     <label for="nama" class="font-medium">Nama lengkap</label>
-                    <InputText id="nama" v-model="form.nama" :invalid="!!form.errors.nama" autofocus />
+                    <InputText id="nama" v-model="form.nama" :invalid="!!form.errors.nama" />
                     <FieldError :message="form.errors.nama" />
                 </div>
                 <div class="flex flex-col gap-2">
@@ -55,17 +106,17 @@ const isSiswa = computed(() => props.form.jenis === 'siswa');
                     <InputText id="nis" v-model="form.nis" :invalid="!!form.errors.nis" />
                     <FieldError :message="form.errors.nis" />
                 </div>
-                <div v-if="isSiswa" class="flex flex-col gap-2">
-                    <label for="nisn" class="font-medium">NISN</label>
+                <div class="flex flex-col gap-2">
+                    <label for="nik" class="font-medium">NIK</label>
                     <InputText
-                        id="nisn"
-                        v-model="form.nisn"
+                        id="nik"
+                        v-model="form.nik"
                         inputmode="numeric"
-                        maxlength="10"
-                        placeholder="10 digit"
-                        :invalid="!!form.errors.nisn"
+                        maxlength="16"
+                        placeholder="16 digit"
+                        :invalid="!!form.errors.nik"
                     />
-                    <FieldError :message="form.errors.nisn" />
+                    <FieldError :message="form.errors.nik" />
                 </div>
                 <div class="flex flex-col gap-2">
                     <label for="jenis_kelamin" class="font-medium">Jenis kelamin</label>
@@ -114,13 +165,18 @@ const isSiswa = computed(() => props.form.jenis === 'siswa');
             </div>
         </section>
 
-        <section>
+        <section v-if="terbuka">
             <h2 class="mb-4 text-lg font-semibold">Kontak</h2>
             <div class="grid gap-5 md:grid-cols-2">
                 <div class="flex flex-col gap-2">
                     <label for="no_hp" class="font-medium">Nomor HP</label>
                     <InputText id="no_hp" v-model="form.no_hp" inputmode="tel" :invalid="!!form.errors.no_hp" />
                     <FieldError :message="form.errors.no_hp" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="email" class="font-medium">Email</label>
+                    <InputText id="email" v-model="form.email" type="email" :invalid="!!form.errors.email" />
+                    <FieldError :message="form.errors.email" />
                 </div>
                 <div v-if="isSiswa" class="flex flex-col gap-2">
                     <label for="nama_orang_tua" class="font-medium">Nama orang tua / wali</label>
@@ -145,7 +201,13 @@ const isSiswa = computed(() => props.form.jenis === 'siswa');
         </section>
 
         <div class="flex gap-2">
-            <Button type="submit" :label="submitLabel" icon="pi pi-check" :loading="form.processing" />
+            <Button
+                type="submit"
+                :label="submitLabel"
+                icon="pi pi-check"
+                :loading="form.processing"
+                :disabled="!terbuka"
+            />
             <slot name="actions" />
         </div>
     </form>

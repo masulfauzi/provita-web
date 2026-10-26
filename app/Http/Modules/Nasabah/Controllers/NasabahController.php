@@ -3,9 +3,11 @@
 namespace App\Http\Modules\Nasabah\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Modules\Nasabah\Exceptions\DataSiswaTidakTersedia;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Nasabah\Requests\StoreNasabahRequest;
 use App\Http\Modules\Nasabah\Requests\UpdateNasabahRequest;
+use App\Http\Modules\Nasabah\Services\DataSiswaService;
 use App\Http\Modules\Nasabah\Services\NasabahService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -43,6 +45,31 @@ class NasabahController extends Controller
         Gate::authorize('viewAny', Nasabah::class);
 
         return response()->json($this->service->cariAktif($request->string('q')->toString()));
+    }
+
+    /**
+     * Memeriksa NISN ke API sekolah (lewat server agar tidak terhalang CORS) dan
+     * memastikan NISN tersebut belum terdaftar sebagai nasabah.
+     */
+    public function periksaNisn(Request $request, DataSiswaService $dataSiswa): JsonResponse
+    {
+        $nisn = $request->validate(['nisn' => ['required', 'digits:10']])['nisn'];
+
+        $terdaftar = Nasabah::query()->where('nisn', $nisn)->first(['id', 'nomor', 'nama']);
+
+        if ($terdaftar) {
+            return response()->json(['status' => 'terdaftar', 'nasabah' => $terdaftar]);
+        }
+
+        try {
+            $data = $dataSiswa->cari($nisn);
+        } catch (DataSiswaTidakTersedia $e) {
+            report($e);
+
+            return response()->json(['status' => 'gagal', 'message' => $e->getMessage()], 503);
+        }
+
+        return response()->json($data ? ['status' => 'ditemukan', 'data' => $data] : ['status' => 'tidak_ditemukan']);
     }
 
     public function create(): Response

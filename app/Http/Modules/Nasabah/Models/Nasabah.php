@@ -36,6 +36,7 @@ class Nasabah extends Model
     protected $fillable = [
         'nis',
         'nisn',
+        'nik',
         'nama',
         'jenis',
         'jenis_kelamin',
@@ -44,6 +45,7 @@ class Nasabah extends Model
         'tanggal_lahir',
         'alamat',
         'no_hp',
+        'email',
         'nama_orang_tua',
         'is_active',
         'keterangan',

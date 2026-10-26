@@ -21,6 +21,7 @@ class StoreNasabahRequest extends FormRequest
         return [
             'nis' => ['nullable', 'string', 'max:30', Rule::unique('nasabah', 'nis')->ignore($this->route('nasabah'))],
             'nisn' => ['nullable', 'digits:10', Rule::unique('nasabah', 'nisn')->ignore($this->route('nasabah'))],
+            'nik' => ['nullable', 'digits:16', Rule::unique('nasabah', 'nik')->ignore($this->route('nasabah'))],
             'nama' => ['required', 'string', 'max:255'],
             'jenis' => ['required', Rule::in(array_keys(Nasabah::JENIS))],
             'jenis_kelamin' => ['required', Rule::in(array_keys(Nasabah::JENIS_KELAMIN))],
@@ -29,6 +30,7 @@ class StoreNasabahRequest extends FormRequest
             'tanggal_lahir' => ['nullable', 'date', 'before:today'],
             'alamat' => ['nullable', 'string', 'max:1000'],
             'no_hp' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9 \-]{6,20}$/'],
+            'email' => ['nullable', 'email', 'max:255'],
             'nama_orang_tua' => ['nullable', 'string', 'max:255'],
             'keterangan' => ['nullable', 'string', 'max:1000'],
         ];
@@ -39,6 +41,7 @@ class StoreNasabahRequest extends FormRequest
         return [
             'nis' => 'NIS/NIP',
             'nisn' => 'NISN',
+            'nik' => 'NIK',
             'jenis' => 'jenis nasabah',
             'jenis_kelamin' => 'jenis kelamin',
             'tempat_lahir' => 'tempat lahir',
@@ -52,6 +55,7 @@ class StoreNasabahRequest extends FormRequest
     {
         return [
             'nisn.digits' => 'NISN harus 10 digit angka.',
+            'nik.digits' => 'NIK harus 16 digit angka.',
         ];
     }
 
@@ -59,6 +63,8 @@ class StoreNasabahRequest extends FormRequest
     {
         // NISN hanya untuk siswa; spasi dibuang agar "0012 345 678" tetap terbaca 10 digit.
         $this->merge([
+            'nik' => filled($this->input('nik')) ? preg_replace('/\s+/', '', (string) $this->input('nik')) : null,
+            'email' => filled($this->input('email')) ? mb_strtolower(trim((string) $this->input('email'))) : null,
             'nisn' => $this->input('jenis') === 'siswa' && filled($this->input('nisn'))
                 ? preg_replace('/\s+/', '', (string) $this->input('nisn'))
                 : null,

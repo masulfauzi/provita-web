@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Modules\Nasabah\Models\Nasabah;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function dataNasabah(array $override = []): array
@@ -170,4 +171,110 @@ it('mencari nasabah berdasarkan NISN', function () {
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.nisn', '0055512345');
+});
+
+/**
+ * Respons API data siswa sekolah seperti aslinya.
+ */
+function apiSiswa(array $data = []): array
+{
+    return [
+        'success' => true,
+        'message' => 'Data siswa berhasil ditemukan',
+        'data' => [
+            'id_siswa' => 'd0c3e1a2-0000-0000-0000-000000000000',
+            'nama_siswa' => '  Ibnu   Sabil ',
+            'nis' => '24123',
+            'foto' => 'https://apps.smkn2semarang.sch.id/foto/x.jpg',
+            'nisn' => '0098754010',
+            'nik' => '3374012345678901',
+            'no_hp' => '6281234567890',
+            'kelas' => 'xi akl 2',
+            'email' => 'Ibnu.Sabil@Example.com',
+            ...$data,
+        ],
+    ];
+}
+
+it('memeriksa NISN ke API sekolah dan menormalkan datanya', function () {
+    Http::fake(['apps.smkn2semarang.sch.id/*' => Http::response(apiSiswa())]);
+
+    $this->actingAs($this->teller)->getJson('/nasabah/periksa-nisn?nisn=0098754010')
+        ->assertOk()
+        ->assertExactJson([
+            'status' => 'ditemukan',
+            'data' => [
+                'nama' => 'Ibnu Sabil',
+                'nis' => '24123',
+                'nisn' => '0098754010',
+                'nik' => '3374012345678901',
+                'no_hp' => '081234567890',
+                'kelas' => 'XI AKL 2',
+                'email' => 'ibnu.sabil@example.com',
+            ],
+        ]);
+
+    Http::assertSent(fn ($request) => $request['nisn'] === '0098754010'
+        && str_starts_with($request->url(), 'https://apps.smkn2semarang.sch.id/api/siswa/nisn'));
+});
+
+it('NISN yang tidak ada di API dilaporkan tidak ditemukan', function () {
+    Http::fake(['*' => Http::response(['success' => false, 'message' => 'Siswa not found'], 404)]);
+
+    $this->actingAs($this->teller)->getJson('/nasabah/periksa-nisn?nisn=0081234567')
+        ->assertOk()
+        ->assertExactJson(['status' => 'tidak_ditemukan']);
+});
+
+it('NISN yang sudah menjadi nasabah tidak diperiksa ulang ke API', function () {
+    Http::fake();
+    $nasabah = Nasabah::factory()->create(['nisn' => '0098754010']);
+
+    $this->actingAs($this->teller)->getJson('/nasabah/periksa-nisn?nisn=0098754010')
+        ->assertOk()
+        ->assertJson(['status' => 'terdaftar', 'nasabah' => ['id' => $nasabah->id, 'nomor' => $nasabah->nomor]]);
+
+    Http::assertNothingSent();
+});
+
+it('API yang gagal dilaporkan agar teller mengisi manual', function (Closure $respons) {
+    Http::fake(['*' => $respons]);
+
+    $this->actingAs($this->teller)->getJson('/nasabah/periksa-nisn?nisn=0098754010')
+        ->assertStatus(503)
+        ->assertJson(['status' => 'gagal']);
+})->with([
+    'server error' => [fn () => Http::response('Server Error', 500)],
+    'bukan JSON data' => [fn () => Http::response(['success' => true])],
+    'koneksi putus' => [fn () => Http::failedConnection()],
+]);
+
+it('memvalidasi NISN dan hak akses periksa', function () {
+    Http::fake();
+
+    $this->actingAs($this->teller)->getJson('/nasabah/periksa-nisn?nisn=12345')->assertUnprocessable();
+    $this->actingAs(userWithRole('admin'))->getJson('/nasabah/periksa-nisn?nisn=0098754010')->assertForbidden();
+
+    Http::assertNothingSent();
+});
+
+it('menyimpan NIK dan email nasabah', function () {
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['nik' => '3374 0123 4567 8901', 'email' => ' Siti@Example.COM ']))
+        ->assertSessionHasNoErrors();
+
+    expect(Nasabah::firstOrFail())->nik->toBe('3374012345678901')->email->toBe('siti@example.com');
+
+    // NIK juga untuk guru/karyawan.
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['jenis' => 'guru', 'nis' => '1980', 'nama' => 'Pak Guru', 'nik' => '3374012345678902']))
+        ->assertSessionHasNoErrors();
+    expect(Nasabah::where('nama', 'Pak Guru')->value('nik'))->toBe('3374012345678902');
+});
+
+it('memvalidasi NIK 16 digit unik dan format email', function () {
+    Nasabah::factory()->create(['nik' => '3374012345678901']);
+
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['nik' => '12345', 'email' => 'bukan-email']))
+        ->assertSessionHasErrors(['nik', 'email']);
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['nik' => '3374012345678901']))
+        ->assertSessionHasErrors('nik');
 });

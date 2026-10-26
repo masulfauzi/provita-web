@@ -3,6 +3,7 @@ import { useForm } from '@inertiajs/vue3';
 const KOSONG = {
     nis: '',
     nisn: '',
+    nik: '',
     nama: '',
     jenis: 'siswa',
     jenis_kelamin: null,
@@ -11,6 +12,7 @@ const KOSONG = {
     tanggal_lahir: null,
     alamat: '',
     no_hp: '',
+    email: '',
     nama_orang_tua: '',
     keterangan: '',
 };

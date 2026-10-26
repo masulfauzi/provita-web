@@ -28,6 +28,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // API data siswa sekolah untuk mengisi form nasabah dari NISN.
+    'siswa_api' => [
+        'url' => env('SISWA_API_URL', 'https://apps.smkn2semarang.sch.id/api/siswa/nisn'),
+        'timeout' => (int) env('SISWA_API_TIMEOUT', 8),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
