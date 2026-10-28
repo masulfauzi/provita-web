@@ -25,6 +25,7 @@ const props = defineProps({
     judul: { type: String, required: true },
     items: { type: Object, required: true },
     total: { type: String, default: '0.00' },
+    saldoKas: { type: String, default: '0.00' },
     filters: { type: Object, default: () => ({}) },
     akunOptions: { type: Array, default: () => [] },
     hargaBukuTabungan: { type: String, default: '0.00' },
@@ -32,7 +33,7 @@ const props = defineProps({
 
 const page = usePage();
 const confirm = useConfirm();
-const masuk = computed(() => props.jenis === 'masuk');
+const masuk = computed(() => props.jenis === 'kas_masuk');
 const url = computed(() => (masuk.value ? '/kas/penerimaan' : '/kas/pengeluaran'));
 
 const { suggestions, search: cariNasabah } = useSearch('/nasabah/cari');
@@ -87,7 +88,7 @@ function reload(params = {}) {
             per_page: props.items.per_page,
             ...params,
         },
-        { preserveState: true, preserveScroll: true, replace: true, only: ['items', 'total', 'filters'] },
+        { preserveState: true, preserveScroll: true, replace: true, only: ['items', 'total', 'filters', 'saldoKas'] },
     );
 }
 
@@ -102,8 +103,8 @@ watch(filter, () => reload({ page: 1 }));
         :title="judul"
         :subtitle="
             masuk
-                ? 'Uang masuk di luar tabungan, mis. penjualan buku tabungan.'
-                : 'Uang keluar untuk kebutuhan bank, mis. belanja ATK.'
+                ? 'Uang masuk ke kas di luar setoran tabungan, mis. penjualan buku tabungan.'
+                : 'Uang keluar dari kas (kas yang sama dengan uang tabungan nasabah), mis. belanja ATK.'
         "
     />
 
@@ -112,6 +113,10 @@ watch(filter, () => reload({ page: 1 }));
             <div class="flex items-center gap-2 text-sm text-muted-color">
                 <i class="pi pi-calendar" /> Tanggal:
                 <DateText class="font-semibold text-color" :value="page.props.app?.tanggal_transaksi" hari />
+            </div>
+            <div class="flex items-center gap-2 text-sm text-muted-color">
+                <i class="pi pi-wallet" /> Saldo kas tersedia:
+                <MoneyText class="font-semibold text-color" :value="saldoKas" />
             </div>
 
             <div class="flex flex-col gap-2">
@@ -223,7 +228,7 @@ watch(filter, () => reload({ page: 1 }));
                 <Column field="nomor" header="Nomor" class="whitespace-nowrap" />
                 <Column header="Keterangan">
                     <template #body="{ data }">
-                        <div :class="{ 'line-through opacity-60': data.batal_at }">{{ data.keterangan }}</div>
+                        <div :class="{ 'line-through opacity-60': data.pembalik }">{{ data.keterangan }}</div>
                         <div class="text-xs text-muted-color">
                             {{ data.akun?.nama }}<span v-if="data.nasabah"> · {{ data.nasabah.nama }}</span>
                         </div>
@@ -231,8 +236,8 @@ watch(filter, () => reload({ page: 1 }));
                 </Column>
                 <Column header="Nominal" class="text-right">
                     <template #body="{ data }">
-                        <MoneyText :value="data.nominal" :class="{ 'line-through opacity-60': data.batal_at }" />
-                        <div v-if="data.batal_at"><Tag value="Dibatalkan" severity="danger" /></div>
+                        <MoneyText :value="data.nominal" :class="{ 'line-through opacity-60': data.pembalik }" />
+                        <div v-if="data.pembalik"><Tag value="Dibatalkan" severity="danger" /></div>
                     </template>
                 </Column>
                 <Column header="Petugas">

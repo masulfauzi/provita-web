@@ -18,7 +18,7 @@ const props = defineProps({
 });
 
 const { can } = usePermission();
-const masuk = computed(() => props.kas.jenis === 'masuk');
+const masuk = computed(() => props.kas.jenis === 'kas_masuk');
 const kembali = computed(() => (masuk.value ? '/kas/penerimaan' : '/kas/pengeluaran'));
 const dialog = ref(false);
 const form = useForm({ alasan: '' });
@@ -119,8 +119,8 @@ const cetak = () => window.print();
 
     <Dialog v-model:visible="dialog" modal :header="`Batalkan ${kas.nomor}`" class="w-full max-w-md">
         <p class="mb-4">
-            Jurnal pembalik akan dicatat pada tanggal transaksi aktif. Bukti ini tetap tersimpan dengan tanda
-            dibatalkan.
+            Transaksi pembalik dan jurnal baliknya akan dicatat pada tanggal transaksi aktif. Bukti ini tetap tersimpan
+            dengan tanda dibatalkan.
         </p>
         <div class="flex flex-col gap-2">
             <label for="alasan" class="font-medium">Alasan pembatalan</label>

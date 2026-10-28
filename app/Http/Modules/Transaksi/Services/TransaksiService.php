@@ -39,6 +39,10 @@ class TransaksiService
      */
     public function balik(Transaksi $transaksi, ?User $user = null, ?string $alasan = null): Transaksi
     {
+        if ($transaksi->isKasLain()) {
+            throw TransaksiDitolakException::bukanTransaksiTabungan();
+        }
+
         if ($transaksi->jenis === Transaksi::PEMBALIK) {
             throw TransaksiDitolakException::pembalikTidakBisaDibalik();
         }

@@ -4,9 +4,9 @@ namespace App\Http\Modules\Kas\Services;
 
 use App\Http\Modules\Akuntansi\Models\Akun;
 use App\Http\Modules\Akuntansi\Services\JurnalService;
-use App\Http\Modules\Kas\Models\Kas;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
+use App\Http\Modules\Transaksi\Models\Transaksi;
 use App\Models\User;
 use App\Support\Money;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -15,11 +15,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Penerimaan & pengeluaran kas. Setiap catatan langsung dijurnal di DB transaction
- * yang sama: penerimaan D Kas / K akun pendapatan, pengeluaran D akun beban / K Kas.
+ * Penerimaan & pengeluaran kas. Dicatat di tabel transaksi tanpa rekening, memakai kas yang
+ * sama dengan uang tabungan nasabah; saldo rekening nasabah tidak berubah. Jurnalnya
+ * memakai akun lawan sendiri: penerimaan D Kas / K pendapatan, pengeluaran D beban / K Kas.
  */
 class KasService
 {
+    /**
+     * jenis => [judul menu, prefix nomor, kategori akun lawan].
+     */
+    public const JENIS = [
+        Transaksi::KAS_MASUK => ['Penerimaan kas', 'KM-', 'pendapatan'],
+        Transaksi::KAS_KELUAR => ['Pengeluaran kas', 'KK-', 'beban'],
+    ];
+
     public function __construct(
         protected JurnalService $jurnal,
         protected PengaturanService $pengaturan,
@@ -31,7 +40,7 @@ class KasService
     public function paginate(string $jenis, string $search = '', array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->query($jenis, $search, $filters)
-            ->with(['akun:id,kode,nama', 'nasabah:id,nomor,nama', 'user:id,name'])
+            ->with(['akun:id,kode,nama', 'nasabah:id,nomor,nama', 'user:id,name', 'pembalik:id,pembalik_dari_id,created_at'])
             ->orderByDesc('tanggal')
             ->orderByDesc('nomor')
             ->paginate(min(max($perPage, 5), 100))
@@ -45,7 +54,7 @@ class KasService
      */
     public function total(string $jenis, string $search = '', array $filters = []): string
     {
-        return Money::of((string) $this->query($jenis, $search, $filters)->whereNull('batal_at')->sum('nominal'));
+        return Money::of((string) $this->query($jenis, $search, $filters)->doesntHave('pembalik')->sum('nominal'));
     }
 
     /**
@@ -56,7 +65,7 @@ class KasService
     public function akunOptions(string $jenis): array
     {
         return Akun::query()->aktif()
-            ->where('kategori', Kas::JENIS[$jenis][2])
+            ->where('kategori', self::JENIS[$jenis][2])
             ->orderBy('kode')
             ->get(['id', 'kode', 'nama', 'peran'])
             ->map(fn (Akun $akun) => ['value' => $akun->id, 'label' => "{$akun->kode} · {$akun->nama}", 'peran' => $akun->peran])
@@ -64,60 +73,76 @@ class KasService
     }
 
     /**
-     * @throws ValidationException
+     * Saldo kas yang tersedia (termasuk uang tabungan nasabah).
      */
-    public function terima(Akun $akun, int|string $nominal, string $keterangan, ?Nasabah $nasabah = null, ?User $user = null): Kas
+    public function saldoKas(): string
     {
-        return $this->catat(Kas::MASUK, $akun, $nominal, $keterangan, $nasabah, $user);
+        return $this->jurnal->saldoKas();
     }
 
     /**
      * @throws ValidationException
      */
-    public function keluarkan(Akun $akun, int|string $nominal, string $keterangan, ?User $user = null): Kas
+    public function terima(Akun $akun, int|string $nominal, string $keterangan, ?Nasabah $nasabah = null, ?User $user = null): Transaksi
     {
-        return $this->catat(Kas::KELUAR, $akun, $nominal, $keterangan, null, $user);
+        return $this->catat(Transaksi::KAS_MASUK, $akun, $nominal, $keterangan, $nasabah, $user);
     }
 
     /**
-     * Membatalkan dengan jurnal pembalik. Catatan kas tetap tersimpan dengan tanda batal.
+     * @throws ValidationException
+     */
+    public function keluarkan(Akun $akun, int|string $nominal, string $keterangan, ?User $user = null): Transaksi
+    {
+        return $this->catat(Transaksi::KAS_KELUAR, $akun, $nominal, $keterangan, null, $user);
+    }
+
+    /**
+     * Membatalkan dengan transaksi pembalik (dan jurnal baliknya). Bukti asal tetap tersimpan.
      *
      * @throws ValidationException
      */
-    public function batal(Kas $kas, string $alasan, ?User $user = null): Kas
+    public function batal(Transaksi $kas, string $alasan, ?User $user = null): Transaksi
     {
         return DB::transaction(function () use ($kas, $alasan, $user) {
             $this->jurnal->kunci();
-            $kas = Kas::query()->whereKey($kas->id)->lockForUpdate()->firstOrFail();
 
-            if ($kas->dibatalkan()) {
+            if (Transaksi::query()->where('pembalik_dari_id', $kas->id)->exists()) {
                 throw ValidationException::withMessages(['kas' => "{$kas->nomor} sudah dibatalkan."]);
             }
 
+            $mutasi = Money::negate($kas->mutasi);
+            $saldo = $this->jurnal->saldoKas();
+
             // Membatalkan penerimaan = mengeluarkan uangnya lagi, jadi saldo kas harus cukup.
-            if ($kas->jenis === Kas::MASUK) {
-                $this->pastikanSaldoCukup($kas->nominal);
+            if (Money::isNegative($mutasi)) {
+                $this->pastikanSaldoCukup($saldo, $kas->nominal);
             }
 
-            $pembalik = $this->jurnal->balik($kas->jurnal()->firstOrFail(), $user, "Pembatalan {$kas->nomor}: {$alasan}", dariModul: true);
+            $pembalik = Transaksi::create([
+                'urut' => 0,
+                'tanggal' => $this->pengaturan->tanggalTransaksi(),
+                'jenis' => Transaksi::PEMBALIK,
+                'nominal' => $kas->nominal,
+                'mutasi' => $mutasi,
+                'saldo_sesudah' => Money::add($saldo, $mutasi),
+                'keterangan' => $alasan,
+                'akun_id' => $kas->akun_id,
+                'pembalik_dari_id' => $kas->id,
+                'user_id' => $user?->id,
+            ]);
 
-            $kas->forceFill([
-                'batal_at' => now(),
-                'batal_alasan' => $alasan,
-                'batal_user_id' => $user?->id,
-                'jurnal_batal_id' => $pembalik->id,
-            ])->save();
+            $this->jurnal->dariTransaksi($pembalik);
 
-            return $kas;
+            return $pembalik;
         }, 3);
     }
 
     /**
      * @throws ValidationException
      */
-    protected function catat(string $jenis, Akun $akun, int|string $nominal, string $keterangan, ?Nasabah $nasabah, ?User $user): Kas
+    protected function catat(string $jenis, Akun $akun, int|string $nominal, string $keterangan, ?Nasabah $nasabah, ?User $user): Transaksi
     {
-        $kategori = Kas::JENIS[$jenis][2];
+        $kategori = self::JENIS[$jenis][2];
 
         if (! $akun->is_active || $akun->kategori !== $kategori) {
             throw ValidationException::withMessages(['akun_id' => 'Pilih kategori dari akun '.Akun::KATEGORI[$kategori].' yang aktif.']);
@@ -133,39 +158,40 @@ class KasService
             // Mutex jurnal dikunci lebih dulu: cek saldo, nomor kas, dan nomor jurnal tidak bisa diselip.
             $this->jurnal->kunci();
 
-            if ($jenis === Kas::KELUAR) {
-                $this->pastikanSaldoCukup($nominal);
+            $saldo = $this->jurnal->saldoKas();
+            $mutasi = $jenis === Transaksi::KAS_MASUK ? $nominal : Money::negate($nominal);
+
+            if ($jenis === Transaksi::KAS_KELUAR) {
+                $this->pastikanSaldoCukup($saldo, $nominal);
             }
 
             $tanggal = $this->pengaturan->tanggalTransaksi()->toDateString();
-            $nomor = $this->nomorBerikutnya($jenis, $tanggal);
-            $kas = Akun::peran(Akun::KAS)->id;
 
-            $jurnal = $this->jurnal->catatOtomatis('kas', $tanggal, "{$nomor} · {$keterangan}", $jenis === Kas::MASUK
-                ? [['akun_id' => $kas, 'debit' => $nominal], ['akun_id' => $akun->id, 'kredit' => $nominal]]
-                : [['akun_id' => $akun->id, 'debit' => $nominal], ['akun_id' => $kas, 'kredit' => $nominal]], $user);
-
-            return Kas::create([
-                'nomor' => $nomor,
-                'jenis' => $jenis,
+            $transaksi = Transaksi::create([
+                'urut' => 0,
+                'nomor' => $this->nomorBerikutnya($jenis, $tanggal),
                 'tanggal' => $tanggal,
-                'akun_id' => $akun->id,
+                'jenis' => $jenis,
                 'nominal' => $nominal,
+                'mutasi' => $mutasi,
+                'saldo_sesudah' => Money::add($saldo, $mutasi),
                 'keterangan' => $keterangan,
+                'akun_id' => $akun->id,
                 'nasabah_id' => $nasabah?->id,
-                'jurnal_id' => $jurnal->id,
                 'user_id' => $user?->id,
             ]);
+
+            $this->jurnal->dariTransaksi($transaksi);
+
+            return $transaksi;
         }, 3);
     }
 
     /**
      * @throws ValidationException
      */
-    protected function pastikanSaldoCukup(string $nominal): void
+    protected function pastikanSaldoCukup(string $saldo, string $nominal): void
     {
-        $saldo = $this->jurnal->saldoKas();
-
         if (Money::compare($saldo, $nominal) < 0) {
             throw ValidationException::withMessages([
                 'nominal' => 'Saldo kas tidak cukup: tersedia '.Money::format($saldo).', dibutuhkan '.Money::format($nominal).'.',
@@ -178,8 +204,8 @@ class KasService
      */
     protected function nomorBerikutnya(string $jenis, string $tanggal): string
     {
-        $prefix = Kas::JENIS[$jenis][1].substr($tanggal, 0, 4).'-';
-        $terakhir = Kas::query()->where('nomor', 'like', $prefix.'%')->orderByDesc('nomor')->value('nomor');
+        $prefix = self::JENIS[$jenis][1].substr($tanggal, 0, 4).'-';
+        $terakhir = Transaksi::query()->where('nomor', 'like', $prefix.'%')->orderByDesc('nomor')->value('nomor');
         $urut = $terakhir ? (int) substr($terakhir, strlen($prefix)) + 1 : 1;
 
         return $prefix.str_pad((string) $urut, 6, '0', STR_PAD_LEFT);
@@ -187,11 +213,12 @@ class KasService
 
     /**
      * @param  array{dari?: string|null, sampai?: string|null, akun_id?: string|null}  $filters
-     * @return Builder<Kas>
+     * @return Builder<Transaksi>
      */
     protected function query(string $jenis, string $search, array $filters): Builder
     {
-        return Kas::query()
+        return Transaksi::query()
+            ->kasLain()
             ->where('jenis', $jenis)
             ->when($search !== '', fn (Builder $query) => $query->where(fn (Builder $q) => $q
                 ->where('nomor', 'like', "%{$search}%")

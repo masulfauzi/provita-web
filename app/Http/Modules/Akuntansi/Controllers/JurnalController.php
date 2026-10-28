@@ -7,8 +7,8 @@ use App\Http\Modules\Akuntansi\Models\Jurnal;
 use App\Http\Modules\Akuntansi\Requests\SimpanJurnalRequest;
 use App\Http\Modules\Akuntansi\Services\AkunService;
 use App\Http\Modules\Akuntansi\Services\JurnalService;
-use App\Http\Modules\Kas\Models\Kas;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
+use App\Http\Modules\Transaksi\Models\Transaksi;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -65,12 +65,13 @@ class JurnalController extends Controller
             'user:id,name',
             'pembalik:id,pembalik_dari_id,nomor',
             'pembalikDari:id,nomor',
-            'transaksi:id,rekening_id,jenis',
+            'transaksi:id,rekening_id,jenis,pembalik_dari_id',
         ]);
 
-        // Bukti kas asal (modul Kas) bila jurnal ini berasal dari penerimaan/pengeluaran kas.
-        $kas = $jurnal->sumber === Jurnal::KAS && class_exists(Kas::class)
-            ? Kas::query()->where('jurnal_id', $jurnal->id)->orWhere('jurnal_batal_id', $jurnal->id)->first(['id', 'nomor'])
+        // Bukti kas asal bila jurnal ini berasal dari penerimaan/pengeluaran kas (atau pembatalannya).
+        $transaksi = $jurnal->transaksi;
+        $kas = $transaksi?->isKasLain()
+            ? Transaksi::query()->find($transaksi->pembalik_dari_id ?? $transaksi->id, ['id', 'nomor'])
             : null;
 
         return Inertia::render('Akuntansi::Jurnal/Show', ['jurnal' => $jurnal, 'kas' => $kas]);

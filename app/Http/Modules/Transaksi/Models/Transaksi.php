@@ -2,9 +2,12 @@
 
 namespace App\Http\Modules\Transaksi\Models;
 
+use App\Http\Modules\Akuntansi\Models\Akun;
+use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Models\User;
 use App\Support\Finance\Immutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,8 +16,10 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Mutasi rekening. Tidak boleh di-update/di-delete (lihat Immutable);
- * koreksi lewat TransaksiService::balik().
+ * Mutasi kas: mutasi rekening tabungan, atau penerimaan/pengeluaran kas lain
+ * (rekening kosong, akun lawan di akun_id; saldo_sesudah = saldo kas).
+ * Tidak boleh di-update/di-delete (lihat Immutable); koreksi lewat
+ * TransaksiService::balik() atau pembatalan di modul Kas.
  *
  * @property string $nominal
  * @property string $mutasi
@@ -34,12 +39,22 @@ class Transaksi extends Model
 
     public const PENUTUPAN = 'penutupan';
 
+    /** Penerimaan kas di luar tabungan (mis. penjualan buku tabungan); tanpa rekening. */
+    public const KAS_MASUK = 'kas_masuk';
+
+    /** Pengeluaran kas untuk kebutuhan bank; tanpa rekening. */
+    public const KAS_KELUAR = 'kas_keluar';
+
+    public const JENIS_KAS_LAIN = [self::KAS_MASUK, self::KAS_KELUAR];
+
     public const JENIS = [
         self::SETOR => 'Setoran',
         self::TARIK => 'Penarikan',
         self::PEMBALIK => 'Koreksi',
         self::BIAYA => 'Biaya administrasi',
         self::PENUTUPAN => 'Penutupan',
+        self::KAS_MASUK => 'Penerimaan kas',
+        self::KAS_KELUAR => 'Pengeluaran kas',
     ];
 
     protected $table = 'transaksi';
@@ -47,12 +62,15 @@ class Transaksi extends Model
     protected $fillable = [
         'rekening_id',
         'urut',
+        'nomor',
         'tanggal',
         'jenis',
         'nominal',
         'mutasi',
         'saldo_sesudah',
         'keterangan',
+        'akun_id',
+        'nasabah_id',
         'pembalik_dari_id',
         'user_id',
     ];
@@ -73,6 +91,24 @@ class Transaksi extends Model
     public function rekening(): BelongsTo
     {
         return $this->belongsTo(Rekening::class);
+    }
+
+    /**
+     * Akun lawan penerimaan/pengeluaran kas.
+     *
+     * @return BelongsTo<Akun, $this>
+     */
+    public function akun(): BelongsTo
+    {
+        return $this->belongsTo(Akun::class);
+    }
+
+    /**
+     * @return BelongsTo<Nasabah, $this>
+     */
+    public function nasabah(): BelongsTo
+    {
+        return $this->belongsTo(Nasabah::class);
     }
 
     /**
@@ -97,6 +133,21 @@ class Transaksi extends Model
     public function pembalik(): HasOne
     {
         return $this->hasOne(self::class, 'pembalik_dari_id');
+    }
+
+    public function isKasLain(): bool
+    {
+        return $this->rekening_id === null;
+    }
+
+    /**
+     * Penerimaan/pengeluaran kas beserta pembatalannya (semua transaksi tanpa rekening).
+     *
+     * @param  Builder<Transaksi>  $query
+     */
+    public function scopeKasLain(Builder $query): void
+    {
+        $query->whereNull('rekening_id');
     }
 
     public function getActivitylogOptions(): LogOptions

@@ -69,41 +69,18 @@ class JurnalService
     }
 
     /**
-     * Jurnal dari modul lain (mis. penerimaan/pengeluaran kas). Pemanggil menjalankannya
-     * di dalam DB transaction miliknya agar catatan modul dan jurnal tersimpan bersama.
-     *
-     * @param  list<array{akun_id: string, debit?: int|string|null, kredit?: int|string|null, keterangan?: string|null}>  $baris
+     * Jurnal pembalik: debit & kredit ditukar, tanggal = tanggal transaksi aktif. Hanya jurnal
+     * manual; jurnal transaksi dikoreksi lewat koreksi di buku tabungan atau pembatalan bukti kas.
      *
      * @throws ValidationException
      */
-    public function catatOtomatis(string $sumber, Carbon|string $tanggal, string $keterangan, array $baris, ?User $user = null): Jurnal
+    public function balik(Jurnal $jurnal, ?User $user = null, ?string $alasan = null): Jurnal
     {
-        return $this->simpan([
-            'tanggal' => Carbon::parse($tanggal)->toDateString(),
-            'keterangan' => mb_strimwidth($keterangan, 0, 255),
-            'sumber' => $sumber,
-            'user_id' => $user?->id,
-        ], $baris);
-    }
-
-    /**
-     * Jurnal pembalik: debit & kredit ditukar, tanggal = tanggal transaksi aktif. Dari halaman
-     * jurnal hanya jurnal manual yang bisa dikoreksi; jurnal kas dibalik lewat pembatalan kas
-     * ($dariModul), jurnal transaksi lewat koreksi di buku tabungan.
-     *
-     * @throws ValidationException
-     */
-    public function balik(Jurnal $jurnal, ?User $user = null, ?string $alasan = null, bool $dariModul = false): Jurnal
-    {
-        if ($jurnal->sumber === Jurnal::KAS && ! $dariModul) {
+        if ($jurnal->sumber !== Jurnal::MANUAL) {
             throw ValidationException::withMessages([
-                'jurnal' => 'Jurnal dari penerimaan/pengeluaran kas dikoreksi dengan membatalkan bukti kasnya.',
-            ]);
-        }
-
-        if (! in_array($jurnal->sumber, [Jurnal::MANUAL, Jurnal::KAS], true)) {
-            throw ValidationException::withMessages([
-                'jurnal' => 'Jurnal dari transaksi tabungan dikoreksi lewat koreksi transaksi di buku tabungan.',
+                'jurnal' => Transaksi::query()->whereKey($jurnal->transaksi_id)->whereNull('rekening_id')->exists()
+                    ? 'Jurnal dari penerimaan/pengeluaran kas dikoreksi dengan membatalkan bukti kasnya.'
+                    : 'Jurnal dari transaksi tabungan dikoreksi lewat koreksi transaksi di buku tabungan.',
             ]);
         }
 
@@ -135,8 +112,8 @@ class JurnalService
     }
 
     /**
-     * Jurnal otomatis untuk satu transaksi tabungan. Dipanggil oleh TransaksiService di dalam
-     * DB transaction yang sama, sehingga transaksi dan jurnalnya selalu tersimpan bersama.
+     * Jurnal otomatis untuk satu transaksi (tabungan atau penerimaan/pengeluaran kas). Dipanggil
+     * di dalam DB transaction yang sama, sehingga transaksi dan jurnalnya selalu tersimpan bersama.
      */
     public function dariTransaksi(Transaksi $transaksi): Jurnal
     {
@@ -149,25 +126,27 @@ class JurnalService
             $tukar = true;
         }
 
-        [$debit, $kredit] = self::POLA_TRANSAKSI[$jenis]
-            ?? throw new \LogicException("Jenis transaksi [{$jenis}] belum memiliki pola jurnal.");
+        [$debit, $kredit] = match ($jenis) {
+            // Penerimaan/pengeluaran kas: lawan akun kas adalah akun pendapatan/beban yang dipilih.
+            Transaksi::KAS_MASUK => [Akun::peran(Akun::KAS)->id, $transaksi->akun_id],
+            Transaksi::KAS_KELUAR => [$transaksi->akun_id, Akun::peran(Akun::KAS)->id],
+            default => array_map(fn (string $peran) => Akun::peran($peran)->id, self::POLA_TRANSAKSI[$jenis]
+                ?? throw new \LogicException("Jenis transaksi [{$jenis}] belum memiliki pola jurnal.")),
+        };
 
         if ($tukar) {
             [$debit, $kredit] = [$kredit, $debit];
         }
 
-        $rekening = Rekening::query()->with('nasabah:id,nama')->find($transaksi->rekening_id, ['id', 'nomor', 'nasabah_id']);
-        $keterangan = Transaksi::JENIS[$transaksi->jenis].' '.$rekening?->nomor.($rekening?->nasabah ? ' · '.$rekening->nasabah->nama : '');
-
         return $this->simpan([
             'tanggal' => $transaksi->tanggal->toDateString(),
-            'keterangan' => mb_strimwidth($keterangan, 0, 255),
+            'keterangan' => mb_strimwidth($this->keteranganTransaksi($transaksi), 0, 255),
             'sumber' => Jurnal::TRANSAKSI,
             'transaksi_id' => $transaksi->id,
             'user_id' => $transaksi->user_id,
         ], [
-            ['akun_id' => Akun::peran($debit)->id, 'debit' => $transaksi->nominal],
-            ['akun_id' => Akun::peran($kredit)->id, 'kredit' => $transaksi->nominal],
+            ['akun_id' => $debit, 'debit' => $transaksi->nominal],
+            ['akun_id' => $kredit, 'kredit' => $transaksi->nominal],
         ]);
     }
 
@@ -190,6 +169,19 @@ class JurnalService
             ->first([DB::raw('SUM(debit) as debit'), DB::raw('SUM(kredit) as kredit')]);
 
         return Money::sub((string) ($saldo->debit ?? '0'), (string) ($saldo->kredit ?? '0'));
+    }
+
+    protected function keteranganTransaksi(Transaksi $transaksi): string
+    {
+        if ($transaksi->rekening_id === null) {
+            return $transaksi->pembalik_dari_id
+                ? 'Pembatalan '.Transaksi::query()->whereKey($transaksi->pembalik_dari_id)->value('nomor').": {$transaksi->keterangan}"
+                : "{$transaksi->nomor} · {$transaksi->keterangan}";
+        }
+
+        $rekening = Rekening::query()->with('nasabah:id,nama')->find($transaksi->rekening_id, ['id', 'nomor', 'nasabah_id']);
+
+        return Transaksi::JENIS[$transaksi->jenis].' '.$rekening?->nomor.($rekening?->nasabah ? ' · '.$rekening->nasabah->nama : '');
     }
 
     /**

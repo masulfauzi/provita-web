@@ -26,11 +26,10 @@ const filter = reactive({ sumber: props.filters.sumber ?? null });
 
 const sumberOptions = [
     { value: 'manual', label: 'Jurnal umum' },
-    { value: 'transaksi', label: 'Transaksi tabungan' },
-    { value: 'kas', label: 'Penerimaan / pengeluaran kas' },
+    { value: 'transaksi', label: 'Transaksi tabungan & kas' },
 ];
 
-const sumberLabel = { manual: 'Jurnal umum', transaksi: 'Transaksi', kas: 'Kas' };
+const sumberLabel = { manual: 'Jurnal umum', transaksi: 'Transaksi' };
 const total = (jurnal) => jurnal.detail.reduce((sum, d) => sum + Number(d.debit), 0);
 
 function reload(params = {}) {
