@@ -125,6 +125,8 @@ Penerimaan & pengeluaran kas tidak punya tabel sendiri: dicatat di tabel `transa
 2. `php artisan migrate --force && php artisan permission:sync-modules --prune`
 3. `php artisan config:cache && php artisan route:cache && php artisan view:cache`
 
+Migration masih tahap pengembangan: satu file per tabel dengan skema akhir. Bila file migration disederhanakan ulang, database lama dibuat ulang dengan `php artisan migrate:fresh --seed --force` (semua data terhapus).
+
 **Scheduler** (backup harian 01:30, retensi 14 hari, cek jatuh tempo, bunga bulanan), satu baris cron:
 
 ```cron
