@@ -17,6 +17,8 @@ const props = defineProps({
     submitLabel: { type: String, default: 'Simpan' },
     // "create": siswa wajib memeriksa NISN dulu sebelum mengisi form; "edit": periksa opsional.
     mode: { type: String, default: 'create' },
+    // NISN sudah terisi (mis. dari menu Daftar siswa): langsung diperiksa saat form dibuka.
+    periksaOtomatis: { type: Boolean, default: false },
 });
 
 defineEmits(['submit']);
@@ -86,6 +88,7 @@ function terimaHasil(value) {
                     v-model="form.nisn"
                     :error="form.errors.nisn"
                     :hasil="hasil"
+                    :otomatis="periksaOtomatis"
                     @hasil="terimaHasil"
                 />
             </div>

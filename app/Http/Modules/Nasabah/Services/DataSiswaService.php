@@ -7,7 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Mengambil data siswa dari API sekolah berdasarkan NISN, lalu menyesuaikannya
+ * Mengambil data siswa dari API sekolah (per NISN atau cari nama), lalu menyesuaikannya
  * dengan field form nasabah. Foto dan id siswa sekolah tidak dipakai.
  */
 class DataSiswaService
@@ -21,10 +21,40 @@ class DataSiswaService
      */
     public function cari(string $nisn): ?array
     {
+        $data = $this->panggil(config('services.siswa_api.url'), ['nisn' => $nisn]);
+
+        return $data === null ? null : $this->normalisasi($data);
+    }
+
+    /**
+     * Daftar siswa yang namanya cocok; kosong bila tidak ada.
+     *
+     * @return list<array{nama: string|null, nis: string|null, nisn: string|null, kelas: string|null}>
+     *
+     * @throws DataSiswaTidakTersedia
+     */
+    public function cariNama(string $nama): array
+    {
+        $data = $this->panggil(config('services.siswa_api.cari_url'), ['nama' => $nama]);
+
+        return array_map(
+            fn (array $siswa) => array_intersect_key($this->normalisasi($siswa), array_flip(['nama', 'nis', 'nisn', 'kelas'])),
+            array_values(array_filter($data ?? [], 'is_array')),
+        );
+    }
+
+    /**
+     * Isi "data" dari API, atau null bila tidak ditemukan (404 / success:false).
+     *
+     * @param  array<string, string>  $query
+     * @return array<mixed>|null
+     *
+     * @throws DataSiswaTidakTersedia
+     */
+    protected function panggil(string $url, array $query): ?array
+    {
         try {
-            $response = Http::timeout(config('services.siswa_api.timeout', 8))
-                ->acceptJson()
-                ->get(config('services.siswa_api.url'), ['nisn' => $nisn]);
+            $response = Http::timeout(config('services.siswa_api.timeout', 8))->acceptJson()->get($url, $query);
         } catch (ConnectionException $e) {
             throw new DataSiswaTidakTersedia('API data siswa tidak dapat dihubungi.', previous: $e);
         }
@@ -39,7 +69,7 @@ class DataSiswaService
             throw new DataSiswaTidakTersedia("API data siswa membalas tidak wajar (HTTP {$response->status()}).");
         }
 
-        return $this->normalisasi($data);
+        return $data;
     }
 
     /**

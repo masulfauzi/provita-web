@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -12,9 +12,11 @@ import FieldError from '@/Components/FieldError.vue';
  */
 const nisn = defineModel({ type: String, default: '' });
 
-defineProps({
+const props = defineProps({
     error: { type: String, default: null },
     hasil: { type: Object, default: null },
+    // Periksa NISN yang sudah terisi begitu komponen tampil.
+    otomatis: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['hasil']);
@@ -65,6 +67,8 @@ async function periksa() {
         memeriksa.value = false;
     }
 }
+
+onMounted(() => props.otomatis && valid.value && periksa());
 </script>
 
 <template>

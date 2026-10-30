@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Modules\Nasabah\Controllers\DaftarSiswaController;
 use App\Http\Modules\Nasabah\Controllers\NasabahController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,3 +17,8 @@ Route::middleware('can:nasabah.lihat')->group(function () {
     Route::patch('/nasabah/{nasabah}/aktif', [NasabahController::class, 'toggleActive'])
         ->name('nasabah.toggle-active');
 });
+
+// Pencarian data siswa di sistem sekolah; terbuka untuk semua peran.
+Route::get('/daftar-siswa', [DaftarSiswaController::class, 'index'])
+    ->middleware(['can:siswa_sekolah.lihat', 'throttle:30,1'])
+    ->name('daftar-siswa.index');

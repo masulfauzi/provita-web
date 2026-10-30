@@ -5,13 +5,14 @@ import PageHeader from '@/Components/PageHeader.vue';
 import NasabahForm from '@modules/Nasabah/Components/NasabahForm.vue';
 import { useNasabahForm } from '@modules/Nasabah/Components/useNasabahForm';
 
-defineProps({
+const props = defineProps({
+    nisn: { type: String, default: null },
     kelas: { type: Array, default: () => [] },
     jenisOptions: { type: Array, default: () => [] },
     jenisKelaminOptions: { type: Array, default: () => [] },
 });
 
-const form = useNasabahForm();
+const form = useNasabahForm(props.nisn ? { jenis: 'siswa', nisn: props.nisn } : null);
 
 function submit() {
     form.post('/nasabah');
@@ -28,6 +29,7 @@ function submit() {
         :kelas="kelas"
         :jenis-options="jenisOptions"
         :jenis-kelamin-options="jenisKelaminOptions"
+        :periksa-otomatis="!!nisn"
         @submit="submit"
     >
         <template #actions>

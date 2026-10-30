@@ -4,12 +4,14 @@
     "icon": "pi pi-users",
     "order": 100,
     "menu": [
-        { "label": "Nasabah", "route": "nasabah.index", "permission": "nasabah.lihat", "group": "Data Master" }
+        { "label": "Nasabah", "route": "nasabah.index", "permission": "nasabah.lihat", "group": "Data Master" },
+        { "label": "Daftar siswa", "route": "daftar-siswa.index", "icon": "pi pi-id-card", "permission": "siswa_sekolah.lihat", "group": "Data Master" }
     ],
     "permissions": {
         "nasabah.lihat": { "label": "Lihat nasabah", "roles": ["teller"] },
         "nasabah.tambah": { "label": "Tambah nasabah", "roles": ["teller"] },
         "nasabah.ubah": { "label": "Ubah data nasabah", "roles": ["teller"] },
-        "nasabah.hapus": { "label": "Hapus / nonaktifkan nasabah", "roles": [] }
+        "nasabah.hapus": { "label": "Hapus / nonaktifkan nasabah", "roles": [] },
+        "siswa_sekolah.lihat": { "label": "Cari data siswa sekolah (Daftar siswa)", "roles": ["teller", "admin"] }
     }
 }

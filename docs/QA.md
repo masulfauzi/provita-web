@@ -10,23 +10,24 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 3. [Pengguna](#3-pengguna)
 4. [Jenis rekening](#4-jenis-rekening)
 5. [Nasabah](#5-nasabah)
-6. [Sesi kas (buka)](#6-sesi-kas-buka)
-7. [Buka rekening](#7-buka-rekening)
-8. [Setor & tarik](#8-setor--tarik)
-9. [Koreksi transaksi](#9-koreksi-transaksi)
-10. [Tutup rekening](#10-tutup-rekening)
-11. [Penerimaan kas](#11-penerimaan-kas)
-12. [Pengeluaran kas](#12-pengeluaran-kas)
-13. [Pembatalan bukti kas](#13-pembatalan-bukti-kas)
-14. [Bagan akun](#14-bagan-akun)
-15. [Jurnal umum](#15-jurnal-umum)
-16. [Laporan keuangan](#16-laporan-keuangan)
-17. [Dashboard](#17-dashboard)
-18. [Tutup sesi kas & laporan kas harian](#18-tutup-sesi-kas--laporan-kas-harian)
-19. [Log aktivitas](#19-log-aktivitas)
-20. [Hak akses per peran](#20-hak-akses-per-peran)
-21. [Uji umum & ketahanan](#21-uji-umum--ketahanan)
-22. [Ringkasan hasil](#22-ringkasan-hasil)
+6. [Daftar siswa](#6-daftar-siswa)
+7. [Sesi kas (buka)](#7-sesi-kas-buka)
+8. [Buka rekening](#8-buka-rekening)
+9. [Setor & tarik](#9-setor--tarik)
+10. [Koreksi transaksi](#10-koreksi-transaksi)
+11. [Tutup rekening](#11-tutup-rekening)
+12. [Penerimaan kas](#12-penerimaan-kas)
+13. [Pengeluaran kas](#13-pengeluaran-kas)
+14. [Pembatalan bukti kas](#14-pembatalan-bukti-kas)
+15. [Bagan akun](#15-bagan-akun)
+16. [Jurnal umum](#16-jurnal-umum)
+17. [Laporan keuangan](#17-laporan-keuangan)
+18. [Dashboard](#18-dashboard)
+19. [Tutup sesi kas & laporan kas harian](#19-tutup-sesi-kas--laporan-kas-harian)
+20. [Log aktivitas](#20-log-aktivitas)
+21. [Hak akses per peran](#21-hak-akses-per-peran)
+22. [Uji umum & ketahanan](#22-uji-umum--ketahanan)
+23. [Ringkasan hasil](#23-ringkasan-hasil)
 
 ---
 
@@ -221,7 +222,24 @@ Login sebagai `teller` (kata sandi `Teller2026`). Menu **Data Master → Nasabah
 
 ---
 
-## 6. Sesi kas (buka)
+## 6. Daftar siswa
+
+Login sebagai `teller`. Menu **Data Master → Daftar siswa**. Data diambil langsung dari sistem data siswa sekolah, jadi skenario bertanda *(perlu internet)* butuh koneksi ke apps.smkn2semarang.sch.id.
+
+| ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
+| --- | --- | --- | --- | --- |
+| SIS-01 | Buka Daftar siswa. | Kotak **Nama siswa**, tombol **Cari**, dan petunjuk "Masukkan nama siswa lalu klik Cari…". | | |
+| SIS-02 | Ketik `bu` (2 huruf). | Tombol **Cari** tidak aktif. | | |
+| SIS-03 | *(perlu internet)* Ketik `budi`, tekan Enter. | Muncul "N siswa ditemukan untuk "budi"." dan tabel No, Nama, NIS, NISN, Kelas, Status nasabah. Siswa yang belum menjadi nasabah punya tombol **Daftarkan**. | | |
+| SIS-04 | *(perlu internet)* Cari `zzqqxx`. | "Tidak ada siswa dengan nama "zzqqxx"." | | |
+| SIS-05 | *(perlu internet, opsional bila NSB-12 dikerjakan)* Cari nama siswa yang didaftarkan di NSB-12. | Barisnya bertanda **Sudah nasabah** dengan nomor NSB-000006 yang bisa diklik ke detail nasabah; tidak ada tombol Daftarkan. | | |
+| SIS-06 | *(perlu internet)* Klik **Daftarkan** pada salah satu hasil SIS-03. | Form **Tambah nasabah** terbuka dengan jenis Siswa, NISN terisi, dan langsung diperiksa: "Data siswa ditemukan dan sudah diisikan…". Nama, NIS, kelas terisi otomatis. **Klik Batal, jangan disimpan** (agar nomor nasabah di bagian berikutnya tidak bergeser). | | |
+| SIS-07 | *(perlu internet)* Login `admin1`, buka Daftar siswa, cari `budi`. | Menu tampil dan pencarian berjalan. Tidak ada tombol Daftarkan; kolom status berisi "Belum nasabah". | | |
+| SIS-08 | *(opsional, dibantu developer)* Developer memutus akses ke API, lalu cari `budi`. | Peringatan "API data siswa tidak dapat dihubungi. Coba lagi beberapa saat lagi." Halaman tidak error. | | |
+
+---
+
+## 7. Sesi kas (buka)
 
 Login sebagai `teller`. Menu **Kas → Sesi kas**. Sesi kas harus dibuka sebelum teller bisa membuka rekening dan bertransaksi.
 
@@ -237,7 +255,7 @@ Login sebagai `teller`. Menu **Kas → Sesi kas**. Sesi kas harus dibuka sebelum
 
 ---
 
-## 7. Buka rekening
+## 8. Buka rekening
 
 Login sebagai `teller`. Menu **Tabungan → Rekening** (atau tombol **Buka rekening** di halaman nasabah).
 
@@ -263,7 +281,7 @@ Login sebagai `teller`. Menu **Tabungan → Rekening** (atau tombol **Buka reken
 
 ---
 
-## 8. Setor & tarik
+## 9. Setor & tarik
 
 Login sebagai `teller`. Menu **Tabungan → Setor / Tarik**.
 
@@ -281,12 +299,12 @@ Login sebagai `teller`. Menu **Tabungan → Setor / Tarik**.
 | TRX-10 | Setor R4 `40.000`. | "…Saldo sekarang Rp 40.000." | | |
 | TRX-11 | Tarik R4 `37.000`. | "…Saldo sekarang Rp 3.000." | | |
 | TRX-12 | Setor R5 (Dedi) `100.000`, lalu tarik R5 `250.000`. | Saldo R5 menjadi Rp 300.000, lalu Rp 50.000. | | |
-| TRX-13 | **Salah input (untuk dikoreksi di bagian 9):** setor R1 `10.000`, keterangan `Salah input`. | "…Saldo sekarang Rp 285.000." | | |
+| TRX-13 | **Salah input (untuk dikoreksi di bagian 10):** setor R1 `10.000`, keterangan `Salah input`. | "…Saldo sekarang Rp 285.000." | | |
 | TRX-14 | Buka buku tabungan R1. | Urutan mutasi (terbaru di atas): Setoran 10.000 (saldo 285.000), Tarik 75.000 (275.000), Setor 250.000 (350.000), Setoran awal 100.000 (100.000). Semua bertanggal T, petugas Teller. Kolom koreksi **tidak tampil** untuk teller. | | |
 
 ---
 
-## 9. Koreksi transaksi
+## 10. Koreksi transaksi
 
 Login sebagai `bendahara`.
 
@@ -301,7 +319,7 @@ Login sebagai `bendahara`.
 
 ---
 
-## 10. Tutup rekening
+## 11. Tutup rekening
 
 Login sebagai `teller`.
 
@@ -317,7 +335,7 @@ Login sebagai `teller`.
 
 ---
 
-## 11. Penerimaan kas
+## 12. Penerimaan kas
 
 Login sebagai `teller`. Menu **Kas → Penerimaan kas**.
 
@@ -339,7 +357,7 @@ Saldo kas tersedia saat masuk bagian ini harus **Rp 383.000**.
 
 ---
 
-## 12. Pengeluaran kas
+## 13. Pengeluaran kas
 
 Login sebagai `teller`. Menu **Kas → Pengeluaran kas**.
 
@@ -353,7 +371,7 @@ Login sebagai `teller`. Menu **Kas → Pengeluaran kas**.
 
 ---
 
-## 13. Pembatalan bukti kas
+## 14. Pembatalan bukti kas
 
 Login sebagai `bendahara`.
 
@@ -369,7 +387,7 @@ Login sebagai `bendahara`.
 
 ---
 
-## 14. Bagan akun
+## 15. Bagan akun
 
 Login sebagai `bendahara`. Menu **Keuangan → Bagan akun**.
 
@@ -387,7 +405,7 @@ Login sebagai `bendahara`. Menu **Keuangan → Bagan akun**.
 
 ---
 
-## 15. Jurnal umum
+## 16. Jurnal umum
 
 Login sebagai `bendahara`. Menu **Keuangan → Jurnal umum**.
 
@@ -410,11 +428,11 @@ Login sebagai `bendahara`. Menu **Keuangan → Jurnal umum**.
 
 ---
 
-## 16. Laporan keuangan
+## 17. Laporan keuangan
 
 Login sebagai `teller`. Menu **Laporan → Laporan keuangan**. Periode bawaan: tanggal 1 bulan ini s.d. T.
 
-**Angka yang diharapkan setelah bagian 1–15**
+**Angka yang diharapkan setelah bagian 1–16**
 
 | Pos | Nilai |
 | --- | --- |
@@ -445,7 +463,7 @@ Login sebagai `teller`. Menu **Laporan → Laporan keuangan**. Periode bawaan: t
 
 ---
 
-## 17. Dashboard
+## 18. Dashboard
 
 Login sebagai `teller`. Menu **Dashboard**.
 
@@ -465,7 +483,7 @@ Login sebagai `teller`. Menu **Dashboard**.
 
 ---
 
-## 18. Tutup sesi kas & laporan kas harian
+## 19. Tutup sesi kas & laporan kas harian
 
 Login sebagai `teller`. Pastikan Tanggal transaksi aktif sudah dikembalikan ke **T** (DSB-10).
 
@@ -504,7 +522,7 @@ Biaya administrasi penutupan (Rp 5.000 dan Rp 3.000) tidak dihitung karena tidak
 
 ---
 
-## 19. Log aktivitas
+## 20. Log aktivitas
 
 Login sebagai `bendahara`. Menu **Sistem → Log aktivitas**.
 
@@ -521,16 +539,17 @@ Login sebagai `bendahara`. Menu **Sistem → Log aktivitas**.
 
 ---
 
-## 20. Hak akses per peran
+## 21. Hak akses per peran
 
 Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesuai tabel.
 
-### 20.1 Menu yang tampil
+### 21.1 Menu yang tampil
 
 | Menu | teller | admin1 | bendahara |
 | --- | --- | --- | --- |
 | Dashboard | tampil | tampil | tampil |
 | Data Master → Nasabah | tampil | **tidak** | tampil |
+| Data Master → Daftar siswa | tampil | tampil | tampil |
 | Data Master → Jenis Rekening | **tidak** | tampil | tampil |
 | Tabungan → Setor / Tarik | tampil | **tidak** | tampil |
 | Tabungan → Rekening | tampil | **tidak** | tampil |
@@ -546,7 +565,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
-| HAK-01 | Login `teller`, cocokkan menu dengan tabel 20.1. | Sesuai kolom teller. | | |
+| HAK-01 | Login `teller`, cocokkan menu dengan tabel 21.1. | Sesuai kolom teller. | | |
 | HAK-02 | Login `admin1` (`Rahasia123`), cocokkan menu. | Sesuai kolom admin1. | | |
 | HAK-03 | Login `bendahara`, cocokkan menu. Buka **Pinjaman**. | Sesuai kolom bendahara. Pinjaman menampilkan halaman segera hadir. | | |
 | HAK-04 | Sebagai `teller`, ketik langsung di alamat browser: `/jurnal`, `/akun`, `/pengguna`, `/log-aktivitas`, `/jenis-rekening`, `/pinjaman`. | Setiap alamat menampilkan halaman **403 / tidak punya akses**, bukan isi halaman. | | |
@@ -559,9 +578,9 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 ---
 
-## 21. Uji umum & ketahanan
+## 22. Uji umum & ketahanan
 
-> **Perhatian:** skenario UMM-05 dan UMM-06 menambah transaksi, sehingga angka di bagian 16, 17, dan 18 tidak berlaku lagi setelahnya. Keduanya dikerjakan pada tanggal T+1 dengan sesi kas yang dibuka di TSK-10.
+> **Perhatian:** skenario UMM-05 dan UMM-06 menambah transaksi, sehingga angka di bagian 17, 18, dan 19 tidak berlaku lagi setelahnya. Keduanya dikerjakan pada tanggal T+1 dengan sesi kas yang dibuka di TSK-10.
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
@@ -576,7 +595,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 ---
 
-## 22. Ringkasan hasil
+## 23. Ringkasan hasil
 
 | Bagian | Jumlah skenario | ✅ | ❌ | ⏭️ |
 | --- | --- | --- | --- | --- |
@@ -585,23 +604,24 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 3. Pengguna | 15 | | | |
 | 4. Jenis rekening | 10 | | | |
 | 5. Nasabah | 19 | | | |
-| 6. Sesi kas (buka) | 7 | | | |
-| 7. Buka rekening | 17 | | | |
-| 8. Setor & tarik | 14 | | | |
-| 9. Koreksi transaksi | 6 | | | |
-| 10. Tutup rekening | 7 | | | |
-| 11. Penerimaan kas | 11 | | | |
-| 12. Pengeluaran kas | 5 | | | |
-| 13. Pembatalan bukti kas | 7 | | | |
-| 14. Bagan akun | 9 | | | |
-| 15. Jurnal umum | 14 | | | |
-| 16. Laporan keuangan | 12 | | | |
-| 17. Dashboard | 11 | | | |
-| 18. Tutup sesi kas & laporan kas harian | 10 | | | |
-| 19. Log aktivitas | 8 | | | |
-| 20. Hak akses | 10 | | | |
-| 21. Uji umum & ketahanan | 8 | | | |
-| **Total** | **225** | | | |
+| 6. Daftar siswa | 8 | | | |
+| 7. Sesi kas (buka) | 7 | | | |
+| 8. Buka rekening | 17 | | | |
+| 9. Setor & tarik | 14 | | | |
+| 10. Koreksi transaksi | 6 | | | |
+| 11. Tutup rekening | 7 | | | |
+| 12. Penerimaan kas | 11 | | | |
+| 13. Pengeluaran kas | 5 | | | |
+| 14. Pembatalan bukti kas | 7 | | | |
+| 15. Bagan akun | 9 | | | |
+| 16. Jurnal umum | 14 | | | |
+| 17. Laporan keuangan | 12 | | | |
+| 18. Dashboard | 11 | | | |
+| 19. Tutup sesi kas & laporan kas harian | 10 | | | |
+| 20. Log aktivitas | 8 | | | |
+| 21. Hak akses | 10 | | | |
+| 22. Uji umum & ketahanan | 8 | | | |
+| **Total** | **233** | | | |
 
 **Daftar bug ditemukan**
 

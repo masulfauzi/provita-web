@@ -33,6 +33,7 @@ Lalu edit `.env`:
 - `DB_*`: koneksi database (buat dulu database `bank_provita` dengan utf8mb4).
 - `SEED_BENDAHARA_PASSWORD` dan `SEED_TELLER_PASSWORD`: kata sandi akun awal (wajib, tidak ada default di kode).
 - `DB_DUMP_BINARY_PATH`: folder berisi `mysqldump`, mis. `/Applications/XAMPP/xamppfiles/bin`.
+- `SISWA_API_URL` dan `SISWA_API_CARI_URL`: API data siswa sekolah (cek NISN saat tambah nasabah, dan pencarian nama di menu **Daftar siswa**); default sudah mengarah ke apps.smkn2semarang.sch.id.
 
 ```bash
 php artisan migrate --seed
@@ -47,7 +48,7 @@ Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller`
 | --- | --- |
 | `bendahara` | Semua menu. Otomatis mendapat setiap permission baru. |
 | `teller` | Buka/tutup sesi kas, setoran, penarikan, penutupan, buku tabungan, penerimaan & pengeluaran kas, laporan kas harian, melihat & mengunduh laporan keuangan; pengaturan hanya tanggal transaksi. |
-| `admin` | Kelola pengguna, jenis rekening, dan pengaturan umum/teknis. |
+| `admin` | Kelola pengguna, jenis rekening, pengaturan umum/teknis, dan mencari data siswa (Daftar siswa). |
 
 Peran & permission dideklarasikan di `config/permissions.php` dan `module.json` tiap modul, lalu disinkronkan dengan `php artisan permission:sync-modules`.
 

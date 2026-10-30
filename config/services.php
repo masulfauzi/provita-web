@@ -31,6 +31,7 @@ return [
     // API data siswa sekolah untuk mengisi form nasabah dari NISN.
     'siswa_api' => [
         'url' => env('SISWA_API_URL', 'https://apps.smkn2semarang.sch.id/api/siswa/nisn'),
+        'cari_url' => env('SISWA_API_CARI_URL', 'https://apps.smkn2semarang.sch.id/api/siswa/cari'),
         'timeout' => (int) env('SISWA_API_TIMEOUT', 8),
     ],
 

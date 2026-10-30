@@ -74,11 +74,15 @@ class NasabahController extends Controller
         return response()->json($data ? ['status' => 'ditemukan', 'data' => $data] : ['status' => 'tidak_ditemukan']);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         Gate::authorize('create', Nasabah::class);
 
+        // Dari menu Daftar siswa: NISN diisikan dan langsung diperiksa ke API sekolah.
+        $nisn = $request->string('nisn')->toString();
+
         return Inertia::render('Nasabah::Create', [
+            'nisn' => preg_match('/^\d{10}$/', $nisn) ? $nisn : null,
             'kelas' => $this->service->daftarKelas(),
             ...$this->options(),
         ]);
