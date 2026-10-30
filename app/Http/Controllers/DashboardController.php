@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Modules\Kas\Services\SesiKasService;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Http\Modules\Transaksi\Services\RingkasanService;
@@ -36,11 +37,13 @@ class DashboardController extends Controller
 
         if (class_exists(RingkasanService::class)) {
             $harian = app(RingkasanService::class)->harian($tanggal);
-            $modal = class_exists(PengaturanService::class) ? app(PengaturanService::class)->uang('uang_modal') : '0.00';
+            $sesi = class_exists(SesiKasService::class) ? app(SesiKasService::class)->hariIni() : null;
+            $modal = $sesi ? Money::of($sesi->modal_awal) : '0.00';
 
             $kartu[] = $this->kartu('Saldo kas hari ini', Money::add($modal, $harian['mutasi_kas']), 'uang', 'pi pi-wallet',
-                'Modal '.Money::format($modal).' + mutasi kas '.Money::format($harian['mutasi_kas'])
-                .(Money::compare($harian['kas_lain'], 0) !== 0 ? ' (termasuk kas lain-lain '.Money::format($harian['kas_lain']).')' : ''));
+                ($sesi ? 'Modal sesi '.Money::format($modal) : 'Sesi kas belum dibuka').' + mutasi kas '.Money::format($harian['mutasi_kas'])
+                .(Money::compare($harian['kas_lain'], 0) !== 0 ? ' (termasuk kas lain-lain '.Money::format($harian['kas_lain']).')' : ''),
+                '/kas/sesi');
             $kartu[] = $this->kartu('Setoran hari ini', $harian['setoran'], 'uang', 'pi pi-arrow-down',
                 $harian['jumlah_setoran'].' transaksi', '/rekening');
             $kartu[] = $this->kartu('Penarikan hari ini', $harian['penarikan'], 'uang', 'pi pi-arrow-up',

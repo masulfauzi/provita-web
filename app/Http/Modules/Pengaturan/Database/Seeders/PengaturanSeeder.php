@@ -16,7 +16,6 @@ class PengaturanSeeder extends Seeder
      */
     public const DEFAULTS = [
         ['kunci' => 'tanggal_transaksi', 'label' => 'Tanggal transaksi aktif', 'tipe' => 'tanggal', 'grup' => 'harian', 'nilai' => null, 'keterangan' => 'Tanggal yang dipakai untuk semua transaksi hari ini.'],
-        ['kunci' => 'uang_modal', 'label' => 'Uang modal', 'tipe' => 'uang', 'grup' => 'harian', 'nilai' => '0.00', 'keterangan' => 'Uang kas awal yang diterima teller saat membuka sesi.'],
         ['kunci' => 'bunga_minimal', 'label' => 'Bunga minimal', 'tipe' => 'uang', 'grup' => 'keuangan', 'nilai' => '0.00'],
         ['kunci' => 'suku_bunga_tabungan', 'label' => 'Suku bunga tabungan per tahun', 'tipe' => 'persen', 'grup' => 'keuangan', 'nilai' => '0'],
         ['kunci' => 'setoran_awal_minimal', 'label' => 'Setoran awal minimal', 'tipe' => 'uang', 'grup' => 'keuangan', 'nilai' => '0.00'],

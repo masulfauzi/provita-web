@@ -15,6 +15,7 @@ beforeEach(function () {
     $this->pengaturan = app(PengaturanService::class);
     $this->pengaturan->setMany(['setoran_awal_minimal' => 10000, 'adm_penutupan' => 5000]);
     $this->teller = userWithRole('teller');
+    bukaSesiKas();
     $this->nasabah = Nasabah::factory()->create(['nisn' => '0012345678', 'nis' => '12345']);
 });
 

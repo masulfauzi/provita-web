@@ -8,7 +8,7 @@ defineProps({
 });
 
 const judulGrup = {
-    harian: ['Operasional harian', 'Tanggal transaksi aktif dan uang modal teller.'],
+    harian: ['Operasional harian', 'Tanggal transaksi aktif. Modal awal teller diisi saat membuka sesi kas.'],
     keuangan: ['Keuangan', 'Bunga, setoran minimal, dan biaya administrasi.'],
     umum: ['Umum', 'Identitas bank dan sekolah untuk kop laporan.'],
 };

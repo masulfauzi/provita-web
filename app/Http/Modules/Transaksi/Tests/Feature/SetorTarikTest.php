@@ -7,6 +7,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->teller = userWithRole('teller');
+    bukaSesiKas();
     $this->rekening = Rekening::factory()->saldoAwal('100000.00')->create();
 });
 

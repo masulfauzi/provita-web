@@ -19,6 +19,7 @@ beforeEach(function () {
     app(PengaturanService::class)->setMany(['tanggal_transaksi' => '2026-10-25', 'harga_buku_tabungan' => 5000]);
     $this->teller = userWithRole('teller');
     $this->bendahara = userWithRole('bendahara');
+    bukaSesiKas();
     $this->bukuTabungan = Akun::peran('pendapatan_buku_tabungan');
     $this->atk = Akun::where('kode', '5-103')->firstOrFail();
 

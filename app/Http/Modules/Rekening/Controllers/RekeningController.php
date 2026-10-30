@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -68,12 +69,17 @@ class RekeningController extends Controller
 
     public function store(BukaRekeningRequest $request): RedirectResponse
     {
-        $rekening = $this->service->buka(
-            Nasabah::findOrFail($request->validated('nasabah_id')),
-            JenisRekening::findOrFail($request->validated('jenis_rekening_id')),
-            (string) $request->validated('setoran_awal'),
-            $request->user(),
-        );
+        try {
+            $rekening = $this->service->buka(
+                Nasabah::findOrFail($request->validated('nasabah_id')),
+                JenisRekening::findOrFail($request->validated('jenis_rekening_id')),
+                (string) $request->validated('setoran_awal'),
+                $request->user(),
+            );
+        } catch (TransaksiDitolakException $e) {
+            // Mis. sesi kas belum dibuka: setoran awal ditolak, rekening batal dibuat.
+            throw ValidationException::withMessages(['setoran_awal' => $e->getMessage()]);
+        }
 
         return redirect()->route('rekening.show', $rekening)
             ->with('success', "Rekening {$rekening->nomor} dibuka dengan setoran awal ".Money::format($rekening->saldo).'.');

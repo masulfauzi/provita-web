@@ -32,6 +32,7 @@ class KasService
     public function __construct(
         protected JurnalService $jurnal,
         protected PengaturanService $pengaturan,
+        protected SesiKasService $sesi,
     ) {}
 
     /**
@@ -105,6 +106,7 @@ class KasService
     {
         return DB::transaction(function () use ($kas, $alasan, $user) {
             $this->jurnal->kunci();
+            $this->pastikanSesiTerbuka($user, 'kas');
 
             if (Transaksi::query()->where('pembalik_dari_id', $kas->id)->exists()) {
                 throw ValidationException::withMessages(['kas' => "{$kas->nomor} sudah dibatalkan."]);
@@ -157,6 +159,7 @@ class KasService
         return DB::transaction(function () use ($jenis, $akun, $nominal, $keterangan, $nasabah, $user) {
             // Mutex jurnal dikunci lebih dulu: cek saldo, nomor kas, dan nomor jurnal tidak bisa diselip.
             $this->jurnal->kunci();
+            $this->pastikanSesiTerbuka($user, 'nominal');
 
             $saldo = $this->jurnal->saldoKas();
             $mutasi = $jenis === Transaksi::KAS_MASUK ? $nominal : Money::negate($nominal);
@@ -196,6 +199,16 @@ class KasService
             throw ValidationException::withMessages([
                 'nominal' => 'Saldo kas tidak cukup: tersedia '.Money::format($saldo).', dibutuhkan '.Money::format($nominal).'.',
             ]);
+        }
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    protected function pastikanSesiTerbuka(?User $user, string $field): void
+    {
+        if ($alasan = $this->sesi->alasanTolak($user)) {
+            throw ValidationException::withMessages([$field => $alasan]);
         }
     }
 

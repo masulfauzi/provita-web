@@ -9,6 +9,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 beforeEach(function () {
     $this->seed(PengaturanSeeder::class);
     $this->tabungan = JenisRekening::kode('tabungan');
+    bukaSesiKas();
 });
 
 function dataJenis(array $data = []): array

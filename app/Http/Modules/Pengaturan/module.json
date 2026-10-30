@@ -8,7 +8,7 @@
     ],
     "permissions": {
         "pengaturan.lihat": { "label": "Lihat pengaturan", "roles": ["teller", "admin"] },
-        "pengaturan.ubah_harian": { "label": "Ubah tanggal transaksi & uang modal", "roles": ["teller"] },
+        "pengaturan.ubah_harian": { "label": "Ubah tanggal transaksi", "roles": ["teller"] },
         "pengaturan.ubah_keuangan": { "label": "Ubah pengaturan keuangan (bunga, biaya)", "roles": [] },
         "pengaturan.ubah_umum": { "label": "Ubah pengaturan umum/teknis", "roles": ["admin"] }
     }

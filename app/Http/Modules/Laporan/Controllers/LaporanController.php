@@ -4,6 +4,7 @@ namespace App\Http\Modules\Laporan\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Modules\Akuntansi\Models\Akun;
+use App\Http\Modules\Kas\Services\SesiKasService;
 use App\Http\Modules\Laporan\Exports\LaporanExport;
 use App\Http\Modules\Laporan\Services\LaporanService;
 use App\Http\Modules\Laporan\Services\TabelLaporan;
@@ -85,6 +86,29 @@ class LaporanController extends Controller
     }
 
     /**
+     * Laporan kas harian: modal awal sesi + pemasukan - pengeluaran uang fisik pada satu tanggal.
+     */
+    public function harian(Request $request): Response
+    {
+        $tanggal = $this->tanggalHarian($request);
+
+        return Inertia::render('Laporan::Harian', [
+            'tanggal' => $tanggal,
+            'data' => app(SesiKasService::class)->rekap($tanggal),
+            'kop' => $this->kopHarian($tanggal),
+        ]);
+    }
+
+    public function harianExcel(Request $request): BinaryFileResponse
+    {
+        $tanggal = $this->tanggalHarian($request);
+        $kop = $this->kopHarian($tanggal);
+        $tabel = TabelLaporan::buat('harian', app(SesiKasService::class)->rekap($tanggal), $kop);
+
+        return Excel::download(new LaporanExport($kop['judul'], $tabel), "kas_harian_{$tanggal}.xlsx");
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function data(string $laporan, string $dari, string $sampai, ?Akun $akun): array
@@ -120,6 +144,15 @@ class LaporanController extends Controller
         return [$dari->toDateString(), $sampai->toDateString()];
     }
 
+    protected function tanggalHarian(Request $request): string
+    {
+        $request->validate(['tanggal' => ['nullable', 'date_format:Y-m-d']]);
+
+        return $request->filled('tanggal')
+            ? $request->string('tanggal')->toString()
+            : $this->pengaturan->tanggalTransaksi()->toDateString();
+    }
+
     protected function akun(Request $request): Akun
     {
         return $request->filled('akun')
@@ -137,15 +170,37 @@ class LaporanController extends Controller
         [$judul, $perTanggal] = self::LAPORAN[$laporan];
         $tanggal = fn (string $nilai) => Carbon::parse($nilai)->translatedFormat('j F Y');
 
+        return $this->kopDasar(
+            $judul,
+            $perTanggal ? 'Per '.$tanggal($sampai) : 'Periode '.$tanggal($dari).' s.d. '.$tanggal($sampai),
+            $tanggal($sampai),
+        ) + ['per_tanggal' => $perTanggal];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function kopHarian(string $tanggal): array
+    {
+        $tanggal = Carbon::parse($tanggal);
+
+        return $this->kopDasar('Laporan kas harian', 'Tanggal '.$tanggal->translatedFormat('l, j F Y'), $tanggal->translatedFormat('j F Y'))
+            + ['per_tanggal' => true];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function kopDasar(string $judul, string $periode, string $tanggalCetak): array
+    {
         return [
             'judul' => $judul,
-            'per_tanggal' => $perTanggal,
-            'periode' => $perTanggal ? 'Per '.$tanggal($sampai) : 'Periode '.$tanggal($dari).' s.d. '.$tanggal($sampai),
+            'periode' => $periode,
             'nama_bank' => $this->pengaturan->get('nama_bank') ?: config('app.name'),
             'nama_sekolah' => $this->pengaturan->get('nama_sekolah'),
             'alamat_sekolah' => $this->pengaturan->get('alamat_sekolah'),
             'nama_kepala_sekolah' => $this->pengaturan->get('nama_kepala_sekolah'),
-            'tanggal_cetak' => $tanggal($sampai),
+            'tanggal_cetak' => $tanggalCetak,
         ];
     }
 

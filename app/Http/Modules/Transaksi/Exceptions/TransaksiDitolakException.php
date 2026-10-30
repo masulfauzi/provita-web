@@ -31,6 +31,11 @@ class TransaksiDitolakException extends RuntimeException
         return new self('Transaksi pembalik tidak bisa dibalik lagi.');
     }
 
+    public static function sesiKas(string $alasan): self
+    {
+        return new self($alasan);
+    }
+
     public static function bukanTransaksiTabungan(): self
     {
         return new self('Penerimaan/pengeluaran kas dibatalkan lewat menu Kas.');

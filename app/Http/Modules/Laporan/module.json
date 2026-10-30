@@ -4,6 +4,7 @@
     "icon": "pi pi-chart-bar",
     "order": 500,
     "menu": [
+        { "label": "Laporan kas harian", "route": "laporan.harian", "permission": "laporan.harian", "group": "Laporan" },
         { "label": "Laporan keuangan", "route": "laporan.index", "permission": "laporan.keuangan", "group": "Laporan" }
     ],
     "permissions": {

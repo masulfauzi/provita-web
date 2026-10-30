@@ -24,7 +24,7 @@ it('bendahara dapat mengubah semua grup pengaturan', function () {
     $this->actingAs(userWithRole('bendahara'))
         ->put('/pengaturan', ['nilai' => [
             'tanggal_transaksi' => '2026-10-22',
-            'uang_modal' => 1250000,
+            'harga_buku_tabungan' => 12500,
             'adm_penutupan' => '5000',
             'nama_bank' => 'Bank Provita SMKN 2',
         ]])
@@ -35,16 +35,16 @@ it('bendahara dapat mengubah semua grup pengaturan', function () {
     $service->flush();
 
     expect($service->tanggalTransaksi()->toDateString())->toBe('2026-10-22')
-        ->and($service->uang('uang_modal'))->toBe('1250000.00')
+        ->and($service->uang('harga_buku_tabungan'))->toBe('12500.00')
         ->and($service->uang('adm_penutupan'))->toBe('5000.00')
         ->and($service->get('nama_bank'))->toBe('Bank Provita SMKN 2');
 });
 
-it('teller hanya dapat mengubah tanggal transaksi dan uang modal', function () {
+it('teller hanya dapat mengubah tanggal transaksi', function () {
     $teller = userWithRole('teller');
 
     $this->actingAs($teller)
-        ->put('/pengaturan', ['nilai' => ['tanggal_transaksi' => '2026-10-23', 'uang_modal' => 500000]])
+        ->put('/pengaturan', ['nilai' => ['tanggal_transaksi' => '2026-10-23']])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
@@ -61,8 +61,8 @@ it('teller hanya dapat mengubah tanggal transaksi dan uang modal', function () {
 
 it('memvalidasi nilai sesuai tipe', function () {
     $this->actingAs(userWithRole('bendahara'))
-        ->put('/pengaturan', ['nilai' => ['tanggal_transaksi' => 'bukan-tanggal', 'uang_modal' => -1]])
-        ->assertSessionHasErrors(['nilai.tanggal_transaksi', 'nilai.uang_modal']);
+        ->put('/pengaturan', ['nilai' => ['tanggal_transaksi' => 'bukan-tanggal', 'harga_buku_tabungan' => -1]])
+        ->assertSessionHasErrors(['nilai.tanggal_transaksi', 'nilai.harga_buku_tabungan']);
 });
 
 it('membagikan tanggal transaksi aktif ke semua halaman', function () {
@@ -76,7 +76,7 @@ it('membagikan tanggal transaksi aktif ke semua halaman', function () {
 it('mencatat perubahan pengaturan ke log aktivitas', function () {
     $user = userWithRole('bendahara');
 
-    $this->actingAs($user)->put('/pengaturan', ['nilai' => ['uang_modal' => 750000]]);
+    $this->actingAs($user)->put('/pengaturan', ['nilai' => ['harga_buku_tabungan' => 7500]]);
 
     $this->assertDatabaseHas('activity_log', [
         'log_name' => 'pengaturan',

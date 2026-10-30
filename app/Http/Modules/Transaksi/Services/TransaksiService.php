@@ -3,6 +3,7 @@
 namespace App\Http\Modules\Transaksi\Services;
 
 use App\Http\Modules\Akuntansi\Services\JurnalService;
+use App\Http\Modules\Kas\Services\SesiKasService;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Http\Modules\Transaksi\Exceptions\TransaksiDitolakException;
@@ -160,6 +161,11 @@ class TransaksiService
         ?string $keterangan,
         ?Transaksi $pembalikDari = null,
     ): Transaksi {
+        // Teller hanya boleh bertransaksi selama sesi kas tanggal transaksi terbuka.
+        if (class_exists(SesiKasService::class) && $alasan = app(SesiKasService::class)->alasanTolak($user)) {
+            throw TransaksiDitolakException::sesiKas($alasan);
+        }
+
         $saldoBaru = Money::add($rekening->saldo, $mutasi);
 
         // Saldo tidak boleh negatif, termasuk akibat transaksi pembalik.

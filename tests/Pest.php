@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Modules\Kas\Models\SesiKas;
+use App\Http\Modules\Kas\Services\SesiKasService;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,4 +50,12 @@ function userWithRole(string $role): User
     }
 
     return User::factory()->create()->assignRole($role);
+}
+
+/**
+ * Membuka sesi kas tanggal transaksi aktif agar teller bisa bertransaksi.
+ */
+function bukaSesiKas(int|string $modal = 0): SesiKas
+{
+    return app(SesiKasService::class)->buka($modal);
 }

@@ -46,7 +46,7 @@ Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller`
 | Peran | Akses |
 | --- | --- |
 | `bendahara` | Semua menu. Otomatis mendapat setiap permission baru. |
-| `teller` | Setoran, penarikan, penutupan, buku tabungan, melihat & mengunduh laporan keuangan; pengaturan hanya tanggal transaksi & uang modal. |
+| `teller` | Buka/tutup sesi kas, setoran, penarikan, penutupan, buku tabungan, penerimaan & pengeluaran kas, laporan kas harian, melihat & mengunduh laporan keuangan; pengaturan hanya tanggal transaksi. |
 | `admin` | Kelola pengguna, jenis rekening, dan pengaturan umum/teknis. |
 
 Peran & permission dideklarasikan di `config/permissions.php` dan `module.json` tiap modul, lalu disinkronkan dengan `php artisan permission:sync-modules`.
@@ -104,7 +104,7 @@ stubs/module/                  # stub generator make:module
 docs/modules.md                # konvensi modul
 ```
 
-Cara membuat modul baru, aturan penamaan, dan aturan uang & transaksi ada di **[docs/modules.md](docs/modules.md)**.
+Cara membuat modul baru, aturan penamaan, dan aturan uang & transaksi ada di **[docs/modules.md](docs/modules.md)**. Skenario uji manual (QA) untuk tester ada di **[docs/QA.md](docs/QA.md)**.
 
 ## Pembukuan & laporan
 
@@ -117,7 +117,9 @@ Setiap transaksi tabungan otomatis dijurnal (double-entry) di DB transaction yan
 | Biaya administrasi | Simpanan tabungan nasabah | Pendapatan administrasi |
 | Koreksi | kebalikan jurnal transaksi asal | |
 
-Penerimaan & pengeluaran kas tidak punya tabel sendiri: dicatat di tabel `transaksi` tanpa rekening (jenis `kas_masuk`/`kas_keluar`) dan memakai kas yang sama dengan uang tabungan nasabah, tanpa mengubah saldo rekening. Teller/bendahara mencatatnya lewat menu **Penerimaan kas** (mis. penjualan buku tabungan, harga default di Pengaturan `harga_buku_tabungan`; D Kas / K akun pendapatan) dan **Pengeluaran kas** (mis. belanja ATK; D akun beban / K Kas, ditolak bila saldo kas kurang). Kategori diambil dari akun Pendapatan/Beban di Bagan akun; pembatalan oleh bendahara membuat transaksi pembalik beserta jurnalnya. Transaksi lain (setoran modal, pemindahan kas ke bank) dicatat bendahara lewat **Jurnal umum**. Laporan di `/laporan` dihitung dari jurnal. Catatan: `uang_modal` di Pengaturan adalah kas awal teller per sesi untuk dashboard, bukan modal pembukuan; modal bank dicatat dengan jurnal umum (D Kas / K Modal).
+Penerimaan & pengeluaran kas tidak punya tabel sendiri: dicatat di tabel `transaksi` tanpa rekening (jenis `kas_masuk`/`kas_keluar`) dan memakai kas yang sama dengan uang tabungan nasabah, tanpa mengubah saldo rekening. Teller/bendahara mencatatnya lewat menu **Penerimaan kas** (mis. penjualan buku tabungan, harga default di Pengaturan `harga_buku_tabungan`; D Kas / K akun pendapatan) dan **Pengeluaran kas** (mis. belanja ATK; D akun beban / K Kas, ditolak bila saldo kas kurang). Kategori diambil dari akun Pendapatan/Beban di Bagan akun; pembatalan oleh bendahara membuat transaksi pembalik beserta jurnalnya. Transaksi lain (setoran modal, pemindahan kas ke bank) dicatat bendahara lewat **Jurnal umum**. Laporan di `/laporan` dihitung dari jurnal. Modal bank dicatat dengan jurnal umum (D Kas / K Modal).
+
+**Sesi kas harian** (menu Kas → Sesi kas, tabel `sesi_kas`): satu sesi per tanggal transaksi, dipakai bersama semua teller. Teller membuka sesi dengan **modal awal** (uang tunai di laci, bukan modal pembukuan; tidak dijurnal). Selama sesi tanggal transaksi belum dibuka atau sudah ditutup, setoran, penarikan, buka/tutup rekening, dan penerimaan/pengeluaran kas oleh teller ditolak; bendahara (permission `kas.tanpa_sesi`) tetap boleh. Saat tutup, teller memasukkan uang fisik; sistem menyimpan saldo seharusnya (modal + pemasukan − pengeluaran) dan selisihnya, yang wajib diberi keterangan bila tidak nol. Sesi baru hanya bisa dibuka bila sesi sebelumnya sudah ditutup. **Laporan kas harian** (`/laporan/harian`, permission `laporan.harian`) merinci modal awal, pemasukan (setoran, penerimaan kas), pengeluaran (penarikan, penutupan, pengeluaran kas), koreksi/pembatalan, saldo akhir, uang fisik & selisih, serta daftar transaksi; bisa dicetak dan diunduh Excel. Biaya administrasi tidak dihitung karena tidak ada uang fisik yang berpindah.
 
 ## Deploy di VPS
 

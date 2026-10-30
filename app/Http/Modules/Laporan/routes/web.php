@@ -3,6 +3,11 @@
 use App\Http\Modules\Laporan\Controllers\LaporanController;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware('can:laporan.harian')->prefix('laporan/harian')->group(function () {
+    Route::get('/', [LaporanController::class, 'harian'])->name('laporan.harian');
+    Route::get('/excel', [LaporanController::class, 'harianExcel'])->name('laporan.harian.excel');
+});
+
 Route::middleware('can:laporan.keuangan')->prefix('laporan')->name('laporan.')->group(function () {
     $laporan = implode('|', array_keys(LaporanController::LAPORAN));
 

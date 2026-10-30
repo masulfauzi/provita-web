@@ -7,7 +7,7 @@ it('bendahara melihat log aktivitas beserta nilai lama dan baru', function () {
     $this->seed(PengaturanSeeder::class);
     $bendahara = userWithRole('bendahara');
 
-    $this->actingAs($bendahara)->put('/pengaturan', ['nilai' => ['uang_modal' => 200000]]);
+    $this->actingAs($bendahara)->put('/pengaturan', ['nilai' => ['harga_buku_tabungan' => 200000]]);
 
     $this->actingAs($bendahara)
         ->get('/log-aktivitas?log_name=pengaturan')

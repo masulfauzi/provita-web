@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Modules\Kas\Services\SesiKasService;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Support\Modules\ModuleRegistry;
 use Illuminate\Http\Request;
@@ -54,6 +55,10 @@ class HandleInertiaRequests extends Middleware
             'app' => [
                 'name' => config('app.name'),
                 'tanggal_transaksi' => fn () => $this->tanggalTransaksi(),
+                // Status sesi kas tanggal transaksi aktif (belum|terbuka|ditutup), untuk penanda di header.
+                'sesi_kas' => fn () => $user?->can('kas.sesi') && class_exists(SesiKasService::class)
+                    ? app(SesiKasService::class)->status()
+                    : null,
             ],
         ];
     }

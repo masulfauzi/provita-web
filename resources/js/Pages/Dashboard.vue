@@ -13,7 +13,7 @@ defineProps({
 const { can } = usePermission();
 
 // Kartu hanya menjadi link bila user boleh membuka halaman tujuannya.
-const izin = { '/rekening': 'rekening.lihat', '/nasabah': 'nasabah.lihat' };
+const izin = { '/rekening': 'rekening.lihat', '/nasabah': 'nasabah.lihat', '/kas/sesi': 'kas.sesi' };
 const bisaDibuka = (url) => url && can(izin[url] ?? '');
 </script>
 

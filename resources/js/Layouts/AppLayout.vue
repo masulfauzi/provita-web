@@ -20,12 +20,27 @@ const roles = computed(() => page.props.auth.roles ?? []);
 const menu = computed(() => page.props.menu ?? []);
 const appName = computed(() => page.props.app?.name ?? 'Bank Provita');
 
+const STATUS_SESI = {
+    belum: { label: 'Sesi kas belum dibuka', severity: 'warn' },
+    terbuka: { label: 'Sesi kas terbuka', severity: 'success' },
+    ditutup: { label: 'Sesi kas ditutup', severity: 'secondary' },
+};
+const sesiKas = computed(() => STATUS_SESI[page.props.app?.sesi_kas] ?? null);
+
 const isDark = useDark({ selector: 'html', valueDark: 'app-dark', valueLight: '', storageKey: 'provita-dark' });
 const isDesktop = useMediaQuery('(min-width: 1024px)');
 const mobileOpen = ref(false);
 
 const currentPath = computed(() => page.url.split('?')[0]);
-const isActive = (url) => currentPath.value === url || currentPath.value.startsWith(`${url}/`);
+const cocok = (url) => currentPath.value === url || currentPath.value.startsWith(`${url}/`);
+// Menu dengan URL terpanjang yang cocok yang aktif, mis. /laporan/harian tidak ikut menyorot /laporan.
+const urlAktif = computed(() =>
+    menu.value
+        .flatMap((group) => group.items.map((item) => item.url))
+        .filter(cocok)
+        .reduce((terpanjang, url) => (url.length > terpanjang.length ? url : terpanjang), ''),
+);
+const isActive = (url) => url === urlAktif.value || (url === '/dashboard' && cocok(url));
 
 const userMenu = ref();
 const userMenuItems = [
@@ -110,6 +125,9 @@ router.on('navigate', () => (mobileOpen.value = false));
                     <span class="hidden text-muted-color sm:inline">Tanggal transaksi:</span>
                     <DateText class="font-semibold" :value="page.props.app?.tanggal_transaksi" hari />
                 </div>
+                <Link v-if="sesiKas" href="/kas/sesi" class="text-sm" title="Sesi kas tanggal transaksi aktif">
+                    <Tag :value="sesiKas.label" :severity="sesiKas.severity" icon="pi pi-wallet" />
+                </Link>
 
                 <div class="ml-auto flex items-center gap-2">
                     <Button

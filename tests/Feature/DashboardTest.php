@@ -14,7 +14,8 @@ use Inertia\Testing\AssertableInertia as Assert;
 beforeEach(function () {
     $this->seed(PengaturanSeeder::class);
     $this->pengaturan = app(PengaturanService::class);
-    $this->pengaturan->setMany(['tanggal_transaksi' => '2026-10-22', 'uang_modal' => 500000, 'adm_penutupan' => 5000]);
+    $this->pengaturan->setMany(['tanggal_transaksi' => '2026-10-22', 'adm_penutupan' => 5000]);
+    bukaSesiKas(500000);
     $this->teller = userWithRole('teller');
 });
 
@@ -69,11 +70,12 @@ it('tidak menghitung transaksi pada tanggal lain', function () {
 
     $this->pengaturan->set('tanggal_transaksi', '2026-10-23');
     app(TransaksiService::class)->setor($rekening, 40000);
+    // Modal awal berlaku per sesi: tanggal baru tanpa sesi berarti modal 0.
 
     $kartu = kartuDashboard();
 
     expect($kartu['Setoran hari ini']['nilai'])->toBe('40000.00')
-        ->and($kartu['Saldo kas hari ini']['nilai'])->toBe('540000.00')
+        ->and($kartu['Saldo kas hari ini'])->nilai->toBe('40000.00')->keterangan->toStartWith('Sesi kas belum dibuka')
         ->and($kartu['Total saldo tabungan']['nilai'])->toBe('140000.00');
 });
 
@@ -91,7 +93,6 @@ it('saldo kas hari ini memperhitungkan penerimaan dan pengeluaran kas lain-lain'
     }
 
     $pengaturan = app(PengaturanService::class);
-    $pengaturan->setMany(['uang_modal' => 50000]);
     $tanggal = $pengaturan->tanggalTransaksi()->toDateString();
     $akun = Akun::class;
 
@@ -107,5 +108,5 @@ it('saldo kas hari ini memperhitungkan penerimaan dan pengeluaran kas lain-lain'
     $this->actingAs(userWithRole('bendahara'))->get('/dashboard')
         ->assertInertia(fn (Assert $page) => $page
             ->where('ringkasan.0.label', 'Saldo kas hari ini')
-            ->where('ringkasan.0.nilai', '53000.00'));
+            ->where('ringkasan.0.nilai', '503000.00'));
 });
