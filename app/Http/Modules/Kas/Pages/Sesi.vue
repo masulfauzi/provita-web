@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import AutoComplete from 'primevue/autocomplete';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
@@ -14,6 +15,7 @@ import MoneyInput from '@/Components/MoneyInput.vue';
 import MoneyText from '@/Components/MoneyText.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { usePermission } from '@/composables/usePermission';
+import { useSearch } from '@/composables/useSearch';
 import { rupiah } from '@/utils/format';
 
 const props = defineProps({
@@ -30,9 +32,18 @@ const sesi = computed(() => props.rekap?.sesi ?? null);
 const terbuka = computed(() => sesi.value && !sesi.value.ditutup_at);
 const tanggalLain = computed(() => props.rekap && props.rekap.tanggal !== props.tanggal);
 
-const formBuka = useForm({ modal_awal: Number(props.saranModal) || null });
+const formBuka = useForm({ modal_awal: Number(props.saranModal) || null, petugas: [] });
 const formTutup = useForm({ uang_fisik: null, keterangan: '' });
 
+// Teller piket dipilih dari nasabah siswa aktif.
+const { suggestions, search: cariSiswa } = useSearch('/nasabah/cari?jenis=siswa');
+const piket = ref([]);
+const labelSiswa = (siswa) => (siswa.kelas ? `${siswa.nama} · ${siswa.kelas}` : siswa.nama);
+const errorPiket = computed(
+    () => formBuka.errors.petugas || Object.entries(formBuka.errors).find(([k]) => k.startsWith('petugas.'))?.[1],
+);
+const jam = (nilai) =>
+    nilai ? new Date(nilai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
 // Selisih dihitung dalam sen agar tidak terkena pembulatan float.
 const sen = (nilai) => Math.round(Number(nilai || 0) * 100);
 const selisih = computed(() =>
@@ -47,7 +58,9 @@ const statusSelisih = (nilai) => {
 };
 
 function buka() {
-    formBuka.post('/kas/sesi', { preserveScroll: true });
+    formBuka
+        .transform((data) => ({ ...data, petugas: piket.value.map((siswa) => siswa.id) }))
+        .post('/kas/sesi', { preserveScroll: true });
 }
 
 function tutup() {
@@ -90,6 +103,26 @@ function reload(params) {
             </div>
 
             <div class="flex flex-col gap-2">
+                <label for="petugas" class="font-medium">Teller piket</label>
+                <AutoComplete
+                    v-model="piket"
+                    input-id="petugas"
+                    multiple
+                    :suggestions="suggestions"
+                    :option-label="labelSiswa"
+                    placeholder="Ketik nama, NIS, atau NISN siswa"
+                    force-selection
+                    fluid
+                    :invalid="!!errorPiket"
+                    @complete="cariSiswa"
+                />
+                <small class="text-muted-color"
+                    >Boleh lebih dari satu. Jam hadir dicatat otomatis saat sesi dibuka.</small
+                >
+                <FieldError :message="errorPiket" />
+            </div>
+
+            <div class="flex flex-col gap-2">
                 <label for="modal_awal" class="font-medium">Modal awal</label>
                 <MoneyInput
                     v-model="formBuka.modal_awal"
@@ -106,7 +139,7 @@ function reload(params) {
                 label="Buka sesi"
                 icon="pi pi-lock-open"
                 :loading="formBuka.processing"
-                :disabled="formBuka.modal_awal === null"
+                :disabled="formBuka.modal_awal === null || !piket.length"
             />
         </form>
 
@@ -124,6 +157,19 @@ function reload(params) {
                 Sesi ini belum ditutup, sedangkan tanggal transaksi aktif sudah berganti. Tutup sesi ini sebelum membuka
                 sesi baru.
             </Message>
+
+            <div>
+                <div class="mb-1 text-sm font-medium">Teller piket</div>
+                <ul class="flex flex-col gap-1 text-sm">
+                    <li v-for="siswa in sesi.petugas" :key="siswa.id" class="flex justify-between gap-2">
+                        <span
+                            >{{ siswa.nama
+                            }}<span v-if="siswa.kelas" class="text-muted-color"> · {{ siswa.kelas }}</span></span
+                        >
+                        <span class="text-muted-color">hadir {{ jam(siswa.hadir_at) }}</span>
+                    </li>
+                </ul>
+            </div>
 
             <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
                 <dt class="text-muted-color">Modal awal</dt>
@@ -189,6 +235,19 @@ function reload(params) {
                     <DateText class="font-semibold text-color" :value="rekap.tanggal" hari />
                 </div>
                 <Tag value="Ditutup" severity="secondary" />
+            </div>
+
+            <div>
+                <div class="mb-1 text-sm font-medium">Teller piket</div>
+                <ul class="flex flex-col gap-1 text-sm">
+                    <li v-for="siswa in sesi.petugas" :key="siswa.id" class="flex justify-between gap-2">
+                        <span
+                            >{{ siswa.nama
+                            }}<span v-if="siswa.kelas" class="text-muted-color"> · {{ siswa.kelas }}</span></span
+                        >
+                        <span class="text-muted-color">hadir {{ jam(siswa.hadir_at) }}</span>
+                    </li>
+                </ul>
             </div>
 
             <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
@@ -269,10 +328,13 @@ function reload(params) {
                         <Tag v-else value="Terbuka" severity="success" />
                     </template>
                 </Column>
-                <Column header="Petugas">
+                <Column header="Teller piket">
                     <template #body="{ data }">
-                        <div>{{ data.pembuka?.name ?? '-' }}</div>
-                        <div v-if="data.penutup" class="text-xs text-muted-color">tutup: {{ data.penutup.name }}</div>
+                        <div>{{ data.petugas?.map((siswa) => siswa.nama).join(', ') || '-' }}</div>
+                        <div class="text-xs text-muted-color">
+                            buka: {{ data.pembuka?.name ?? '-'
+                            }}<span v-if="data.penutup"> · tutup: {{ data.penutup.name }}</span>
+                        </div>
                     </template>
                 </Column>
             </DataTable>

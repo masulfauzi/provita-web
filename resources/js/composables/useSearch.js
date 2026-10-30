@@ -12,7 +12,8 @@ export function useSearch(url) {
         controller = new AbortController();
 
         try {
-            const response = await fetch(`${url}?q=${encodeURIComponent(event.query ?? '')}`, {
+            const pemisah = url.includes('?') ? '&' : '?';
+            const response = await fetch(`${url}${pemisah}q=${encodeURIComponent(event.query ?? '')}`, {
                 headers: { Accept: 'application/json' },
                 signal: controller.signal,
             });

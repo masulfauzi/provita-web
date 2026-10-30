@@ -40,7 +40,7 @@ it('tetap tampil tanpa data transaksi', function () {
 
     expect($kartu['Saldo kas hari ini']['nilai'])->toBe('500000.00')
         ->and($kartu['Setoran hari ini']['nilai'])->toBe('0.00')
-        ->and($kartu['Nasabah aktif']['nilai'])->toBe('0');
+        ->and($kartu['Nasabah aktif']['nilai'])->toBe('1'); // siswa piket sesi kas
 });
 
 it('menghitung setoran, penarikan, kas, dan nasabah pada tanggal transaksi aktif', function () {
@@ -62,7 +62,7 @@ it('menghitung setoran, penarikan, kas, dan nasabah pada tanggal transaksi aktif
         // 500.000 + 180.000 - 20.000 - 25.000
         ->and($kartu['Saldo kas hari ini']['nilai'])->toBe('635000.00')
         ->and($kartu['Total saldo tabungan'])->nilai->toBe('130000.00')->keterangan->toBe('1 rekening aktif')
-        ->and($kartu['Nasabah aktif']['nilai'])->toBe('2');
+        ->and($kartu['Nasabah aktif']['nilai'])->toBe('3'); // 2 pemilik rekening + siswa piket
 });
 
 it('tidak menghitung transaksi pada tanggal lain', function () {

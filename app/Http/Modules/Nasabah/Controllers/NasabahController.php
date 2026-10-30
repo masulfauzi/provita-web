@@ -44,7 +44,9 @@ class NasabahController extends Controller
     {
         Gate::authorize('viewAny', Nasabah::class);
 
-        return response()->json($this->service->cariAktif($request->string('q')->toString()));
+        $jenis = $request->validate(['jenis' => ['nullable', 'in:'.implode(',', array_keys(Nasabah::JENIS))]])['jenis'] ?? null;
+
+        return response()->json($this->service->cariAktif($request->string('q')->toString(), jenis: $jenis));
     }
 
     /**

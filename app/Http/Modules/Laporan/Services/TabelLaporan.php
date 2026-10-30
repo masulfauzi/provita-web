@@ -3,6 +3,7 @@
 namespace App\Http\Modules\Laporan\Services;
 
 use App\Support\Money;
+use Illuminate\Support\Carbon;
 
 /**
  * Mengubah data laporan menjadi baris tabel datar untuk Excel. Nominal dikirim
@@ -171,6 +172,13 @@ class TabelLaporan
      */
     protected function harian(array $data): array
     {
+        if ($data['sesi']['petugas'] ?? []) {
+            $this->tambah(['', 'Teller piket', collect($data['sesi']['petugas'])
+                ->map(fn (array $siswa) => $siswa['nama'].($siswa['kelas'] ? " ({$siswa['kelas']})" : '')
+                    .', hadir '.Carbon::parse($siswa['hadir_at'])->setTimezone(config('app.timezone'))->format('H.i'))
+                ->join('; ')]);
+        }
+
         $this->tambah(['', 'Modal awal', (float) $data['modal_awal']], true);
 
         foreach (['pemasukan' => 'PEMASUKAN', 'pengeluaran' => 'PENGELUARAN'] as $kunci => $judul) {

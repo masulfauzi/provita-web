@@ -83,6 +83,7 @@ Semua transaksi dilakukan pada **satu tanggal transaksi**, yaitu tanggal hari pe
 | --- | --- |
 | Tanggal transaksi aktif | T (hari ini) |
 | Modal awal sesi kas (diisi di SES-03) | Rp 1.000.000 |
+| Teller piket sesi kas T | Budi Santoso & Citra Lestari |
 | Setoran awal minimal | Rp 10.000 |
 | Biaya administrasi penutupan | Rp 5.000 |
 | Harga buku tabungan | Rp 15.000 |
@@ -226,10 +227,11 @@ Login sebagai `teller`. Menu **Kas → Sesi kas**. Sesi kas harus dibuka sebelum
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
-| SES-01 | Buka Sesi kas. | Tanggal T dengan tanda **Belum dibuka**, isian **Modal awal**, tombol **Buka sesi**. Riwayat sesi: "Belum ada sesi kas." Di bagian atas tampil tanda **Sesi kas belum dibuka**. | | |
+| SES-01 | Buka Sesi kas. | Tanggal T dengan tanda **Belum dibuka**, isian **Teller piket** dan **Modal awal**, tombol **Buka sesi**. Riwayat sesi: "Belum ada sesi kas." Di bagian atas tampil tanda **Sesi kas belum dibuka**. | | |
 | SES-02 | **Transaksi tanpa sesi:** buka detail Budi → **Buka rekening**, jenis Tabungan, setoran awal `100.000`, simpan. Lalu buka **Kas → Penerimaan kas**, kategori Pendapatan penjualan buku tabungan, simpan. Ulangi buka rekening Budi sebagai `bendahara`. | Ketiganya ditolak (bendahara juga): "Sesi kas tanggal <T> belum dibuka. Buka sesi kas terlebih dahulu." Rekening tidak dibuat; penerimaan kas tidak tercatat. | | |
-| SES-03 | Kembali ke Sesi kas. Isi Modal awal `1.000.000`, klik **Buka sesi**. | "Sesi kas <T> dibuka dengan modal awal Rp 1.000.000." Tanda berubah **Terbuka**. Ringkasan: Modal awal Rp 1.000.000, Pemasukan Rp 0, Pengeluaran Rp 0, **Saldo kas seharusnya Rp 1.000.000**. Bagian atas: **Sesi kas terbuka**. | | |
-| SES-04 | Periksa Riwayat sesi. | Satu baris tanggal T, modal Rp 1.000.000, selisih bertanda **Terbuka**, petugas Teller. | | |
+| SES-02a | **Validasi teller piket:** isi Modal awal `1.000.000` tanpa memilih teller piket. Lalu ketik `Dedi` di kolom Teller piket. | Tombol **Buka sesi** tidak aktif selama teller piket kosong. Dedi Pratama (guru) **tidak** muncul di pilihan; hanya siswa aktif yang bisa dipilih. | | |
+| SES-03 | Pilih teller piket **Budi Santoso** dan **Citra Lestari** (ketik nama, pilih dari daftar). Modal awal `1.000.000`, klik **Buka sesi**. Catat jamnya. | "Sesi kas <T> dibuka dengan modal awal Rp 1.000.000. Teller piket: Budi Santoso, Citra Lestari (hadir pukul HH.MM)." Jam sama dengan jam saat tombol diklik. Kartu sesi menampilkan kedua siswa beserta kelas dan "hadir HH.MM". Tanda berubah **Terbuka**. Ringkasan: Modal awal Rp 1.000.000, Pemasukan Rp 0, Pengeluaran Rp 0, **Saldo kas seharusnya Rp 1.000.000**. Bagian atas: **Sesi kas terbuka**. | | |
+| SES-04 | Periksa Riwayat sesi. | Satu baris tanggal T, modal Rp 1.000.000, selisih bertanda **Terbuka**, kolom Teller piket "Budi Santoso, Citra Lestari" (buka: Teller). | | |
 | SES-05 | Buka Dashboard. | Kartu Saldo kas hari ini Rp 1.000.000 dengan catatan "Modal sesi Rp 1.000.000 + mutasi kas Rp 0". | | |
 | SES-06 | Login `bendahara`, buka Sesi kas. | Bendahara melihat sesi yang sama (satu sesi per hari untuk semua petugas) dan kini bisa bertransaksi. | | |
 
@@ -495,10 +497,10 @@ Biaya administrasi penutupan (Rp 5.000 dan Rp 3.000) tidak dihitung karena tidak
 | TSK-04 | Ubah uang fisik menjadi `1.350.000`. | Tanda **Kurang**, "Selisih -Rp 3.000". Tombol **Tutup sesi** tidak aktif selama keterangan kosong. | | |
 | TSK-05 | Isi keterangan `Uang kembalian kurang`, klik **Tutup sesi**, konfirmasi. | Konfirmasi menyebut saldo seharusnya Rp 1.353.000 dan uang fisik Rp 1.350.000. Lalu: "Sesi kas <T> ditutup. Uang fisik kurang Rp 3.000." Tanda **Ditutup**; ringkasan menampilkan uang fisik, selisih -Rp 3.000, dan keterangan. Bagian atas: **Sesi kas ditutup**. | | |
 | TSK-06 | **Transaksi setelah tutup:** coba setor R1 `1.000`, lalu catat penerimaan kas apa saja. | Keduanya ditolak: "Sesi kas tanggal <T> sudah ditutup." | | |
-| TSK-07 | Buka Laporan kas harian tanggal T. | Tanda **Sesi ditutup**. Tampil "Uang fisik saat sesi ditutup Rp 1.350.000", "Selisih -Rp 3.000" (merah), dan keterangan. Dibuka/ditutup oleh Teller beserta jamnya. | | |
-| TSK-08 | Klik **Cetak**, lalu **Excel**. | Cetak: kop, judul "Laporan kas harian", tanggal, tabel, rincian, dan tanda tangan Bendahara & Teller. Excel: terunduh `kas_harian_<T>.xlsx` dengan angka yang sama. | | |
+| TSK-07 | Buka Laporan kas harian tanggal T. | Tanda **Sesi ditutup**. Tampil "Uang fisik saat sesi ditutup Rp 1.350.000", "Selisih -Rp 3.000" (merah), dan keterangan. Baris "Teller piket: Budi Santoso (X TKJ 1), Citra Lestari (XI AK 2) — hadir pukul HH.MM" (jam sama dengan SES-03). Dibuka/ditutup oleh Teller beserta jamnya. | | |
+| TSK-08 | Klik **Cetak**, lalu **Excel**. | Cetak: kop, judul "Laporan kas harian", tanggal, tabel, rincian, dan tanda tangan Bendahara & Teller piket (nama Budi Santoso, Citra Lestari). Excel: terunduh `kas_harian_<T>.xlsx` dengan baris Teller piket dan angka yang sama. | | |
 | TSK-09 | Di Laporan kas harian, pilih tanggal **T+1**. | Peringatan "Sesi kas tanggal ini belum dibuka, sehingga modal awal dihitung Rp 0." Pemasukan dan pengeluaran "Tidak ada", saldo kas akhir Rp 0 (transaksi DSB-09 ditolak). | | |
-| TSK-10 | **Sesi hari berikutnya:** Pengaturan → Tanggal transaksi aktif = T+1. Buka Sesi kas. | Form buka sesi tampil dengan Modal awal otomatis **Rp 1.350.000** (uang fisik saat sesi T ditutup). Klik **Buka sesi** → sesi T+1 terbuka. Riwayat sesi berisi dua baris. | | |
+| TSK-10 | **Sesi hari berikutnya:** Pengaturan → Tanggal transaksi aktif = T+1. Buka Sesi kas. | Form buka sesi tampil dengan Modal awal otomatis **Rp 1.350.000** (uang fisik saat sesi T ditutup). Pilih teller piket **Budi Santoso** saja, klik **Buka sesi** → sesi T+1 terbuka dengan jam hadir baru. Riwayat sesi berisi dua baris dengan teller piket masing-masing. | | |
 
 ---
 
@@ -513,7 +515,7 @@ Login sebagai `bendahara`. Menu **Sistem → Log aktivitas**.
 | LOG-03 | Filter kategori **pengguna**. | Ada pembuatan `admin1` dan `teller2`, perubahan nama, reset kata sandi, perubahan peran, nonaktif/aktif. | | |
 | LOG-04 | Klik/expand catatan perubahan nama `teller2`. | Tampil nilai lama "Teller Dua" dan nilai baru "Teller Kedua". | | |
 | LOG-05 | Filter kategori **pengaturan**. | Ada perubahan tanggal transaksi, biaya, dll. dengan nilai lama dan baru. | | |
-| LOG-05a | Filter kategori **sesi_kas**. | Ada pembukaan sesi (modal awal) dan penutupan sesi (saldo sistem, uang fisik, selisih, keterangan). | | |
+| LOG-05a | Filter kategori **sesi_kas**. | Ada pembukaan sesi (modal awal), "Teller piket hadir" dengan nama siswa dan jamnya, serta penutupan sesi (saldo sistem, uang fisik, selisih, keterangan). | | |
 | LOG-06 | Filter pengguna **Teller** dan kategori **nasabah**. | Pembuatan dan perubahan nasabah oleh teller. | | |
 | LOG-07 | Filter tanggal Dari = Sampai = kemarin. Lalu klik **Reset**. | Kosong (semua aktivitas hari ini). Reset menampilkan semua lagi. | | |
 
@@ -583,7 +585,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 3. Pengguna | 15 | | | |
 | 4. Jenis rekening | 10 | | | |
 | 5. Nasabah | 19 | | | |
-| 6. Sesi kas (buka) | 6 | | | |
+| 6. Sesi kas (buka) | 7 | | | |
 | 7. Buka rekening | 17 | | | |
 | 8. Setor & tarik | 14 | | | |
 | 9. Koreksi transaksi | 6 | | | |
@@ -599,7 +601,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 19. Log aktivitas | 8 | | | |
 | 20. Hak akses | 10 | | | |
 | 21. Uji umum & ketahanan | 8 | | | |
-| **Total** | **224** | | | |
+| **Total** | **225** | | | |
 
 **Daftar bug ditemukan**
 

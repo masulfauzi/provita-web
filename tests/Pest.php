@@ -2,6 +2,7 @@
 
 use App\Http\Modules\Kas\Models\SesiKas;
 use App\Http\Modules\Kas\Services\SesiKasService;
+use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,9 +54,12 @@ function userWithRole(string $role): User
 }
 
 /**
- * Membuka sesi kas tanggal transaksi aktif agar teller bisa bertransaksi.
+ * Membuka sesi kas tanggal transaksi aktif agar petugas bisa bertransaksi. Tanpa daftar
+ * petugas, satu siswa piket dibuat otomatis.
+ *
+ * @param  list<string>  $petugas  id nasabah siswa piket
  */
-function bukaSesiKas(int|string $modal = 0): SesiKas
+function bukaSesiKas(int|string $modal = 0, array $petugas = []): SesiKas
 {
-    return app(SesiKasService::class)->buka($modal);
+    return app(SesiKasService::class)->buka($modal, $petugas ?: [Nasabah::factory()->create(['jenis' => 'siswa'])->id]);
 }

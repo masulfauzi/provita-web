@@ -39,11 +39,14 @@ class SesiKasController extends Controller
     {
         $data = $request->validate([
             'modal_awal' => ['required', 'numeric', 'min:0', 'max:9999999999999.99', 'decimal:0,2'],
-        ], attributes: ['modal_awal' => 'modal awal']);
+            'petugas' => ['required', 'array', 'min:1', 'max:10'],
+            'petugas.*' => ['uuid', 'distinct', 'exists:nasabah,id'],
+        ], attributes: ['modal_awal' => 'modal awal', 'petugas' => 'teller piket', 'petugas.*' => 'teller piket']);
 
-        $sesi = $this->service->buka((string) $data['modal_awal'], $request->user());
+        $sesi = $this->service->buka((string) $data['modal_awal'], $data['petugas'], $request->user());
 
-        return back()->with('success', 'Sesi kas '.$sesi->tanggal->translatedFormat('j F Y').' dibuka dengan modal awal '.Money::format($sesi->modal_awal).'.');
+        return back()->with('success', 'Sesi kas '.$sesi->tanggal->translatedFormat('j F Y').' dibuka dengan modal awal '.Money::format($sesi->modal_awal)
+            .'. Teller piket: '.$sesi->petugas->pluck('nama')->join(', ').' (hadir pukul '.$sesi->dibuka_at->format('H.i').').');
     }
 
     public function tutup(Request $request, SesiKas $sesi): RedirectResponse

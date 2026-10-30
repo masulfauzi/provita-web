@@ -36,10 +36,11 @@ class NasabahService
     /**
      * @return Collection<int, Nasabah>
      */
-    public function cariAktif(string $search, int $limit = 10): Collection
+    public function cariAktif(string $search, int $limit = 10, ?string $jenis = null): Collection
     {
         return Nasabah::query()
             ->where('is_active', true)
+            ->when($jenis, fn ($query) => $query->where('jenis', $jenis))
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->where('nama', 'like', "%{$search}%")
                 ->orWhere('nomor', 'like', "%{$search}%")

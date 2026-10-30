@@ -99,6 +99,13 @@ onBeforeUnmount(() => {
     <div class="card">
         <KopLaporan :kop="kop" />
 
+        <div v-if="sesi?.petugas?.length" class="mb-1 text-sm">
+            <span class="text-muted-color print:text-black">Teller piket:</span>
+            <span v-for="(siswa, i) in sesi.petugas" :key="siswa.id"
+                >{{ i ? ', ' : ' ' }}{{ siswa.nama }}<template v-if="siswa.kelas"> ({{ siswa.kelas }})</template></span
+            >
+            — hadir pukul {{ jam(sesi.petugas[0].hadir_at) }}
+        </div>
         <div v-if="sesi" class="mb-4 grid gap-1 text-sm sm:grid-cols-2">
             <div>
                 <span class="text-muted-color print:text-black">Dibuka:</span> {{ sesi.pembuka ?? '-' }}, pukul
@@ -203,8 +210,13 @@ onBeforeUnmount(() => {
             </div>
             <div>
                 <div>Semarang, {{ kop.tanggal_cetak }}</div>
-                <div>Teller</div>
-                <div class="mt-20 font-semibold">{{ sesi?.penutup || '........................................' }}</div>
+                <div>Teller piket</div>
+                <div class="mt-20 font-semibold">
+                    {{
+                        sesi?.petugas?.map((siswa) => siswa.nama).join(', ') ||
+                        '........................................'
+                    }}
+                </div>
             </div>
         </div>
     </div>

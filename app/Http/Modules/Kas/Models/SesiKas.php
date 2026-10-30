@@ -2,10 +2,12 @@
 
 namespace App\Http\Modules\Kas\Models;
 
+use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -64,6 +66,18 @@ class SesiKas extends Model
     public function pembuka(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dibuka_oleh');
+    }
+
+    /**
+     * Siswa piket yang menjaga loket; pivot hadir_at = jam input modal awal (presensi).
+     *
+     * @return BelongsToMany<Nasabah, $this>
+     */
+    public function petugas(): BelongsToMany
+    {
+        return $this->belongsToMany(Nasabah::class, 'sesi_kas_petugas')
+            ->withPivot('hadir_at')
+            ->orderBy('nama');
     }
 
     /**

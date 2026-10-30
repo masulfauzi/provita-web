@@ -27,6 +27,7 @@ beforeEach(function () {
     $this->teller = userWithRole('teller');
     $this->bendahara = userWithRole('bendahara');
     $this->rekening = Rekening::factory()->saldoAwal('100000.00')->create();
+    $this->piket = Nasabah::factory()->create(['nama' => 'Budi Santoso', 'kelas' => 'X TKJ 1']);
 });
 
 it('teller membuka sesi dengan modal awal', function () {
@@ -34,27 +35,42 @@ it('teller membuka sesi dengan modal awal', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Kas::Sesi')->where('rekap', null)->where('tanggal', '2026-10-30'));
 
-    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => 1000000])
-        ->assertSessionHas('success', 'Sesi kas 30 Oktober 2026 dibuka dengan modal awal Rp 1.000.000.');
+    $this->travelTo('2026-10-30 07:05:00');
+    $citra = Nasabah::factory()->create(['nama' => 'Citra Lestari', 'kelas' => 'XI AK 2']);
 
-    expect(SesiKas::sole())
+    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => 1000000, 'petugas' => [$this->piket->id, $citra->id]])
+        ->assertSessionHas('success', 'Sesi kas 30 Oktober 2026 dibuka dengan modal awal Rp 1.000.000. Teller piket: Budi Santoso, Citra Lestari (hadir pukul 07.05).');
+
+    $sesi = SesiKas::sole();
+
+    expect($sesi)
         ->tanggal->toDateString()->toBe('2026-10-30')
         ->modal_awal->toBe('1000000.00')
         ->dibuka_oleh->toBe($this->teller->id)
-        ->ditutup_at->toBeNull();
+        ->ditutup_at->toBeNull()
+        ->and($sesi->petugas->pluck('nama')->all())->toBe(['Budi Santoso', 'Citra Lestari'])
+        ->and($sesi->petugas->pluck('pivot.hadir_at')->unique()->all())->toBe(['2026-10-30 07:05:00']);
+
+    $this->assertDatabaseHas('activity_log', ['log_name' => 'sesi_kas', 'event' => 'petugas', 'subject_id' => $sesi->id]);
+
+    $this->actingAs($this->teller)->get('/kas/sesi')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rekap.sesi.petugas.0.nama', 'Budi Santoso')
+            ->where('rekap.sesi.petugas.1.kelas', 'XI AK 2')
+            ->where('riwayat.data.0.petugas.1.nama', 'Citra Lestari'));
 
     $this->actingAs($this->teller)->get('/dashboard')
         ->assertInertia(fn (Assert $page) => $page->where('app.sesi_kas', 'terbuka'));
 });
 
 it('satu sesi per tanggal dan sesi lama harus ditutup dulu', function () {
-    $this->sesi->buka(500000);
+    $this->sesi->buka(500000, [$this->piket->id]);
 
-    expect(fn () => $this->sesi->buka(100))->toThrow(ValidationException::class, 'Sesi kas tanggal 30 Oktober 2026 sudah dibuka.');
+    expect(fn () => $this->sesi->buka(100, [$this->piket->id]))->toThrow(ValidationException::class, 'Sesi kas tanggal 30 Oktober 2026 sudah dibuka.');
 
     $this->pengaturan->set('tanggal_transaksi', '2026-10-31');
 
-    expect(fn () => app(SesiKasService::class)->buka(100))
+    expect(fn () => app(SesiKasService::class)->buka(100, [$this->piket->id]))
         ->toThrow(ValidationException::class, 'Sesi kas tanggal 30 Oktober 2026 belum ditutup. Tutup dulu sesi tersebut.');
 
     // Halaman sesi mengutamakan sesi lama yang belum ditutup.
@@ -63,7 +79,7 @@ it('satu sesi per tanggal dan sesi lama harus ditutup dulu', function () {
 });
 
 it('modal awal tidak boleh negatif', function () {
-    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => -1])->assertSessionHasErrors('modal_awal');
+    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => -1, 'petugas' => [$this->piket->id]])->assertSessionHasErrors('modal_awal');
 
     expect(SesiKas::count())->toBe(0);
 });
@@ -88,7 +104,7 @@ it('teller tidak bisa bertransaksi sebelum sesi dibuka', function () {
 });
 
 it('teller tidak bisa bertransaksi setelah sesi ditutup', function () {
-    $sesi = $this->sesi->buka(0);
+    $sesi = $this->sesi->buka(0, [$this->piket->id]);
     $this->sesi->tutup($sesi, 0);
 
     expect(fn () => app(TransaksiService::class)->tarik($this->rekening, 1000, $this->teller))
@@ -118,7 +134,7 @@ it('bendahara juga tidak bisa bertransaksi sebelum teller membuka sesi', functio
     expect($this->rekening->fresh()->saldo)->toBe('105000.00');
 
     // Setelah teller membuka sesi, bendahara bisa bertransaksi.
-    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => 0]);
+    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => 0, 'petugas' => [$this->piket->id]]);
 
     $this->actingAs($this->bendahara)
         ->post('/transaksi/setor', ['rekening_id' => $this->rekening->id, 'nominal' => 1000])
@@ -128,7 +144,7 @@ it('bendahara juga tidak bisa bertransaksi sebelum teller membuka sesi', functio
 });
 
 it('menutup sesi menghitung saldo sistem dari modal, tabungan, koreksi, dan kas lain', function () {
-    $sesi = $this->sesi->buka(1000000, $this->teller);
+    $sesi = $this->sesi->buka(1000000, [$this->piket->id], $this->teller);
     $transaksi = app(TransaksiService::class);
     $kas = app(KasService::class);
 
@@ -167,7 +183,7 @@ it('menutup sesi menghitung saldo sistem dari modal, tabungan, koreksi, dan kas 
 });
 
 it('selisih saat tutup wajib diberi keterangan', function () {
-    $sesi = $this->sesi->buka(100000);
+    $sesi = $this->sesi->buka(100000, [$this->piket->id]);
     app(TransaksiService::class)->setor($this->rekening, 50000, $this->teller);
 
     $this->actingAs($this->teller)->post("/kas/sesi/{$sesi->id}/tutup", ['uang_fisik' => 148000])
@@ -185,7 +201,7 @@ it('selisih saat tutup wajib diberi keterangan', function () {
 });
 
 it('saran modal diambil dari uang fisik sesi terakhir', function () {
-    $sesi = $this->sesi->buka(100000);
+    $sesi = $this->sesi->buka(100000, [$this->piket->id]);
     $this->sesi->tutup($sesi, 90000, 'Uji');
     $this->pengaturan->set('tanggal_transaksi', '2026-10-31');
 
@@ -194,14 +210,14 @@ it('saran modal diambil dari uang fisik sesi terakhir', function () {
 
 it('hanya petugas berizin yang bisa membuka sesi', function () {
     $this->actingAs(userWithRole('admin'))->get('/kas/sesi')->assertForbidden();
-    $this->actingAs(userWithRole('admin'))->post('/kas/sesi', ['modal_awal' => 0])->assertForbidden();
+    $this->actingAs(userWithRole('admin'))->post('/kas/sesi', ['modal_awal' => 0, 'petugas' => [$this->piket->id]])->assertForbidden();
 
     $this->actingAs(userWithRole('admin'))->get('/dashboard')
         ->assertInertia(fn (Assert $page) => $page->where('app.sesi_kas', null));
 });
 
 it('laporan kas harian menampilkan modal, pemasukan, pengeluaran, dan selisih', function () {
-    $sesi = $this->sesi->buka(500000, $this->teller);
+    $sesi = $this->sesi->buka(500000, [$this->piket->id], $this->teller);
     app(TransaksiService::class)->setor($this->rekening, 40000, $this->teller);
     app(TransaksiService::class)->tarik($this->rekening, 15000, $this->teller);
     $this->sesi->tutup($sesi, 520000, 'Uang lebih ditemukan', $this->teller);
@@ -242,4 +258,53 @@ it('laporan kas harian tanpa sesi memakai modal 0 dan bisa diunduh Excel', funct
 it('laporan kas harian butuh izin dan tanggal yang valid', function () {
     $this->actingAs(userWithRole('admin'))->get('/laporan/harian')->assertForbidden();
     $this->actingAs($this->teller)->get('/laporan/harian?tanggal=30-10-2026')->assertSessionHasErrors('tanggal');
+});
+
+it('teller piket wajib diisi dan harus siswa nasabah aktif', function () {
+    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => 0, 'petugas' => []])->assertSessionHasErrors('petugas');
+    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => 0])->assertSessionHasErrors('petugas');
+
+    $guru = Nasabah::factory()->create(['jenis' => 'guru', 'nisn' => null]);
+    $nonaktif = Nasabah::factory()->nonaktif()->create();
+
+    foreach ([$guru, $nonaktif] as $bukanPiket) {
+        expect(fn () => $this->sesi->buka(0, [$this->piket->id, $bukanPiket->id]))
+            ->toThrow(ValidationException::class, 'Teller piket harus siswa yang terdaftar sebagai nasabah aktif.');
+    }
+
+    expect(fn () => $this->sesi->buka(0, []))->toThrow(ValidationException::class, 'Pilih minimal satu teller piket.')
+        ->and(SesiKas::count())->toBe(0);
+
+    // Duplikat diabaikan.
+    expect($this->sesi->buka(0, [$this->piket->id, $this->piket->id])->petugas)->toHaveCount(1);
+});
+
+it('pencarian teller piket hanya menampilkan siswa aktif', function () {
+    // Nama memakai kata unik agar tidak bentrok dengan nama acak dari factory.
+    Nasabah::factory()->create(['nama' => 'Zulpiket Siswa']);
+    Nasabah::factory()->create(['nama' => 'Zulpiket Guru', 'jenis' => 'guru', 'nisn' => null]);
+    Nasabah::factory()->nonaktif()->create(['nama' => 'Zulpiket Lulus']);
+
+    $this->actingAs($this->teller)->getJson('/nasabah/cari?jenis=siswa&q=Zulpiket')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.nama', 'Zulpiket Siswa');
+
+    $this->actingAs($this->teller)->getJson('/nasabah/cari?q=Zulpiket')->assertJsonCount(2);
+    $this->actingAs($this->teller)->getJson('/nasabah/cari?jenis=lain')->assertUnprocessable();
+});
+
+it('laporan kas harian memuat teller piket dan jam hadirnya', function () {
+    $this->travelTo('2026-10-30 07:05:00');
+    $this->sesi->buka(100000, [$this->piket->id], $this->teller);
+    Excel::fake();
+
+    $this->actingAs($this->teller)->get('/laporan/harian')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('data.sesi.petugas.0.nama', 'Budi Santoso')
+            ->where('data.sesi.petugas.0.kelas', 'X TKJ 1'));
+
+    $this->actingAs($this->teller)->get('/laporan/harian/excel');
+
+    Excel::assertDownloaded('kas_harian_2026-10-30.xlsx', fn (LaporanExport $export) => in_array(['', 'Teller piket', 'Budi Santoso (X TKJ 1), hadir 07.05'], $export->array(), true));
 });

@@ -3,6 +3,7 @@
 namespace App\Http\Modules\Kas\Services;
 
 use App\Http\Modules\Kas\Models\SesiKas;
+use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Http\Modules\Transaksi\Models\Transaksi;
 use App\Models\User;
@@ -63,26 +64,42 @@ class SesiKasService
     public function riwayat(int $perPage = 10): LengthAwarePaginator
     {
         return SesiKas::query()
-            ->with(['pembuka:id,name', 'penutup:id,name'])
+            ->with(['pembuka:id,name', 'penutup:id,name', 'petugas:id,nama,kelas'])
             ->orderByDesc('tanggal')
             ->paginate(min(max($perPage, 5), 100))
             ->withQueryString();
     }
 
     /**
+     * Membuka sesi dengan modal awal dan siswa piket yang hadir. Jam input modal
+     * dicatat sebagai jam hadir (presensi) setiap siswa piket.
+     *
+     * @param  list<string>  $petugas  id nasabah siswa piket
+     *
      * @throws ValidationException
      */
-    public function buka(int|string $modal, ?User $user = null): SesiKas
+    public function buka(int|string $modal, array $petugas, ?User $user = null): SesiKas
     {
         $modal = Money::of($modal);
         $tanggal = $this->pengaturan->tanggalTransaksi();
+        $petugas = array_values(array_unique($petugas));
 
         if (Money::isNegative($modal)) {
             throw ValidationException::withMessages(['modal_awal' => 'Modal awal tidak boleh negatif.']);
         }
 
+        if ($petugas === []) {
+            throw ValidationException::withMessages(['petugas' => 'Pilih minimal satu teller piket.']);
+        }
+
+        $siswa = Nasabah::query()->whereKey($petugas)->where('jenis', 'siswa')->where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+
+        if ($siswa->count() !== count($petugas)) {
+            throw ValidationException::withMessages(['petugas' => 'Teller piket harus siswa yang terdaftar sebagai nasabah aktif.']);
+        }
+
         try {
-            return DB::transaction(function () use ($modal, $tanggal, $user) {
+            return DB::transaction(function () use ($modal, $tanggal, $user, $siswa) {
                 if ($ada = SesiKas::query()->whereDate('tanggal', $tanggal)->lockForUpdate()->first()) {
                     throw ValidationException::withMessages([
                         'modal_awal' => "Sesi kas tanggal {$this->tanggal($tanggal)} sudah ".($ada->isDitutup() ? 'ditutup.' : 'dibuka.'),
@@ -95,12 +112,20 @@ class SesiKasService
                     ]);
                 }
 
-                return SesiKas::create([
+                $sesi = SesiKas::create([
                     'tanggal' => $tanggal->toDateString(),
                     'modal_awal' => $modal,
                     'dibuka_oleh' => $user?->id,
-                    'dibuka_at' => now(),
+                    'dibuka_at' => $hadir = now(),
                 ]);
+
+                $sesi->petugas()->attach($siswa->modelKeys(), ['hadir_at' => $hadir]);
+
+                activity('sesi_kas')->performedOn($sesi)->causedBy($user)->event('petugas')
+                    ->withProperties(['petugas' => $siswa->pluck('nama')->all(), 'hadir_at' => $hadir->toDateTimeString()])
+                    ->log('Teller piket hadir');
+
+                return $sesi->load('petugas');
             }, 3);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['modal_awal' => "Sesi kas tanggal {$this->tanggal($tanggal)} sudah dibuka."]);
@@ -181,7 +206,7 @@ class SesiKasService
     public function rekap(Carbon|string $tanggal): array
     {
         $tanggal = Carbon::parse($tanggal)->toDateString();
-        $sesi = SesiKas::query()->with(['pembuka:id,name', 'penutup:id,name'])->whereDate('tanggal', $tanggal)->first();
+        $sesi = SesiKas::query()->with(['pembuka:id,name', 'penutup:id,name', 'petugas:id,nama,nis,kelas'])->whereDate('tanggal', $tanggal)->first();
 
         $transaksi = Transaksi::query()
             ->whereDate('tanggal', $tanggal)
@@ -221,6 +246,10 @@ class SesiKasService
                 ...$sesi->only('id', 'modal_awal', 'dibuka_at', 'ditutup_at', 'saldo_sistem', 'uang_fisik', 'selisih', 'keterangan'),
                 'pembuka' => $sesi->pembuka?->name,
                 'penutup' => $sesi->penutup?->name,
+                'petugas' => $sesi->petugas->map(fn (Nasabah $siswa) => [
+                    ...$siswa->only('id', 'nama', 'nis', 'kelas'),
+                    'hadir_at' => Carbon::parse($siswa->pivot->hadir_at)->toJSON(),
+                ])->all(),
             ] : null,
             'modal_awal' => $modal,
             'pemasukan' => array_values($kelompok['pemasukan']),
