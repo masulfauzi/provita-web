@@ -102,7 +102,7 @@ Semua transaksi dilakukan pada **satu tanggal transaksi**, yaitu tanggal hari pe
 - Tidak ada akun admin bawaan. Akun admin dibuat sendiri di bagian 3.
 - Setoran, penarikan, dan bukti kas tidak bisa diubah atau dihapus. Kesalahan diperbaiki dengan **koreksi** atau **pembatalan**, yang membuat transaksi pembalik.
 - "Saldo kas hari ini" di Dashboard dan "saldo kas seharusnya" di Sesi kas berbeda dengan "Saldo kas" di Laporan keuangan. Dashboard dan Sesi kas memakai *modal awal sesi kas* (uang tunai di laci teller), sedangkan Laporan keuangan menghitung dari jurnal pembukuan.
-- Teller hanya bisa setor, tarik, buka/tutup rekening, dan mencatat penerimaan/pengeluaran kas selama **sesi kas** tanggal transaksi terbuka. Bendahara boleh bertransaksi tanpa sesi.
+- Semua petugas (teller maupun bendahara) hanya bisa setor, tarik, koreksi, buka/tutup rekening, serta mencatat dan membatalkan penerimaan/pengeluaran kas selama **sesi kas** tanggal transaksi terbuka. Jurnal umum tidak terpengaruh.
 
 ---
 
@@ -227,11 +227,11 @@ Login sebagai `teller`. Menu **Kas → Sesi kas**. Sesi kas harus dibuka sebelum
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
 | SES-01 | Buka Sesi kas. | Tanggal T dengan tanda **Belum dibuka**, isian **Modal awal**, tombol **Buka sesi**. Riwayat sesi: "Belum ada sesi kas." Di bagian atas tampil tanda **Sesi kas belum dibuka**. | | |
-| SES-02 | **Transaksi tanpa sesi:** buka detail Budi → **Buka rekening**, jenis Tabungan, setoran awal `100.000`, simpan. Lalu buka **Kas → Penerimaan kas**, kategori Pendapatan penjualan buku tabungan, simpan. | Keduanya ditolak: "Sesi kas tanggal <T> belum dibuka. Buka sesi kas terlebih dahulu." Rekening tidak dibuat; penerimaan kas tidak tercatat. | | |
+| SES-02 | **Transaksi tanpa sesi:** buka detail Budi → **Buka rekening**, jenis Tabungan, setoran awal `100.000`, simpan. Lalu buka **Kas → Penerimaan kas**, kategori Pendapatan penjualan buku tabungan, simpan. Ulangi buka rekening Budi sebagai `bendahara`. | Ketiganya ditolak (bendahara juga): "Sesi kas tanggal <T> belum dibuka. Buka sesi kas terlebih dahulu." Rekening tidak dibuat; penerimaan kas tidak tercatat. | | |
 | SES-03 | Kembali ke Sesi kas. Isi Modal awal `1.000.000`, klik **Buka sesi**. | "Sesi kas <T> dibuka dengan modal awal Rp 1.000.000." Tanda berubah **Terbuka**. Ringkasan: Modal awal Rp 1.000.000, Pemasukan Rp 0, Pengeluaran Rp 0, **Saldo kas seharusnya Rp 1.000.000**. Bagian atas: **Sesi kas terbuka**. | | |
 | SES-04 | Periksa Riwayat sesi. | Satu baris tanggal T, modal Rp 1.000.000, selisih bertanda **Terbuka**, petugas Teller. | | |
 | SES-05 | Buka Dashboard. | Kartu Saldo kas hari ini Rp 1.000.000 dengan catatan "Modal sesi Rp 1.000.000 + mutasi kas Rp 0". | | |
-| SES-06 | Login `bendahara`, buka Sesi kas. | Bendahara melihat sesi yang sama (satu sesi per hari untuk semua teller). | | |
+| SES-06 | Login `bendahara`, buka Sesi kas. | Bendahara melihat sesi yang sama (satu sesi per hari untuk semua petugas) dan kini bisa bertransaksi. | | |
 
 ---
 
@@ -458,8 +458,8 @@ Login sebagai `teller`. Menu **Dashboard**.
 | DSB-07 | Klik kartu Saldo kas hari ini, Total saldo tabungan, lalu Nasabah aktif. | Membuka halaman Sesi kas, daftar Rekening, dan daftar Nasabah. | | |
 | DSB-08 | **Ganti tanggal:** Pengaturan → Tanggal transaksi aktif = besok (T+1). Simpan, lalu buka Dashboard. | Tanggal di bagian atas berubah dan tanda menjadi **Sesi kas belum dibuka**. Setoran dan Penarikan hari ini Rp 0; Saldo kas hari ini Rp 0 dengan catatan "Sesi kas belum dibuka"; Total saldo tabungan tetap Rp 375.000. | | |
 | DSB-08a | Masih T+1, buka **Kas → Sesi kas**. | Yang tampil adalah sesi tanggal **T** (masih terbuka) dengan peringatan bahwa sesi ini belum ditutup sedangkan tanggal transaksi sudah berganti. Form buka sesi baru **tidak** tampil. Jangan tutup sesi dulu. | | |
-| DSB-09 | Masih T+1, sebagai teller setor R2 `5.000`. Lalu login `bendahara` dan setor R2 `5.000`. | Teller ditolak: "Sesi kas tanggal <T+1> belum dibuka. Buka sesi kas terlebih dahulu." Bendahara berhasil (bendahara tidak wajib sesi); transaksi bertanggal T+1. Dashboard: Setoran hari ini Rp 5.000. | | |
-| DSB-10 | Koreksi setoran R2 tadi (login bendahara, alasan `Uji tanggal`). Kembalikan Tanggal transaksi aktif ke **T**. | Saldo R2 kembali Rp 50.000. Dashboard kembali ke angka DSB-02 s.d. DSB-05. | | |
+| DSB-09 | Masih T+1, sebagai teller setor R2 `5.000`. Lalu login `bendahara` dan setor R2 `5.000`. | Keduanya ditolak: "Sesi kas tanggal <T+1> belum dibuka. Buka sesi kas terlebih dahulu." Saldo R2 tetap Rp 50.000; Dashboard: Setoran hari ini Rp 0. | | |
+| DSB-10 | Kembalikan Tanggal transaksi aktif ke **T**. | Tanda kembali **Sesi kas terbuka**. Dashboard kembali ke angka DSB-02 s.d. DSB-05. | | |
 
 ---
 
@@ -497,7 +497,7 @@ Biaya administrasi penutupan (Rp 5.000 dan Rp 3.000) tidak dihitung karena tidak
 | TSK-06 | **Transaksi setelah tutup:** coba setor R1 `1.000`, lalu catat penerimaan kas apa saja. | Keduanya ditolak: "Sesi kas tanggal <T> sudah ditutup." | | |
 | TSK-07 | Buka Laporan kas harian tanggal T. | Tanda **Sesi ditutup**. Tampil "Uang fisik saat sesi ditutup Rp 1.350.000", "Selisih -Rp 3.000" (merah), dan keterangan. Dibuka/ditutup oleh Teller beserta jamnya. | | |
 | TSK-08 | Klik **Cetak**, lalu **Excel**. | Cetak: kop, judul "Laporan kas harian", tanggal, tabel, rincian, dan tanda tangan Bendahara & Teller. Excel: terunduh `kas_harian_<T>.xlsx` dengan angka yang sama. | | |
-| TSK-09 | Di Laporan kas harian, pilih tanggal **T+1**. | Peringatan "Sesi kas tanggal ini belum dibuka, sehingga modal awal dihitung Rp 0." Pemasukan Rp 5.000 (setoran bendahara DSB-09), pengeluaran Rp 5.000 (koreksi DSB-10), saldo kas akhir Rp 0. | | |
+| TSK-09 | Di Laporan kas harian, pilih tanggal **T+1**. | Peringatan "Sesi kas tanggal ini belum dibuka, sehingga modal awal dihitung Rp 0." Pemasukan dan pengeluaran "Tidak ada", saldo kas akhir Rp 0 (transaksi DSB-09 ditolak). | | |
 | TSK-10 | **Sesi hari berikutnya:** Pengaturan → Tanggal transaksi aktif = T+1. Buka Sesi kas. | Form buka sesi tampil dengan Modal awal otomatis **Rp 1.350.000** (uang fisik saat sesi T ditutup). Klik **Buka sesi** → sesi T+1 terbuka. Riwayat sesi berisi dua baris. | | |
 
 ---

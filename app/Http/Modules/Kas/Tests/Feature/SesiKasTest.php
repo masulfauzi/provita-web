@@ -100,12 +100,31 @@ it('teller tidak bisa bertransaksi setelah sesi ditutup', function () {
     expect($this->rekening->fresh())->saldo->toBe('100000.00')->isAktif()->toBeTrue();
 });
 
-it('bendahara boleh bertransaksi tanpa sesi', function () {
+it('bendahara juga tidak bisa bertransaksi sebelum teller membuka sesi', function () {
+    $pesan = 'Sesi kas tanggal 30 Oktober 2026 belum dibuka. Buka sesi kas terlebih dahulu.';
+    $setoran = app(TransaksiService::class)->setor($this->rekening, 5000); // proses sistem, tanpa user
+    $km = app(KasService::class)->terima(Akun::peran('pendapatan_buku_tabungan'), 5000, 'Buku');
+
+    $this->actingAs($this->bendahara)
+        ->post('/transaksi/setor', ['rekening_id' => $this->rekening->id, 'nominal' => 1000])
+        ->assertSessionHasErrors(['nominal' => $pesan]);
+
+    $this->actingAs($this->bendahara)->post("/transaksi/{$setoran->id}/balik", ['alasan' => 'Uji'])
+        ->assertSessionHas('error', $pesan);
+
+    $this->actingAs($this->bendahara)->post("/kas/{$km->id}/batal", ['alasan' => 'Uji'])
+        ->assertSessionHas('error', $pesan);
+
+    expect($this->rekening->fresh()->saldo)->toBe('105000.00');
+
+    // Setelah teller membuka sesi, bendahara bisa bertransaksi.
+    $this->actingAs($this->teller)->post('/kas/sesi', ['modal_awal' => 0]);
+
     $this->actingAs($this->bendahara)
         ->post('/transaksi/setor', ['rekening_id' => $this->rekening->id, 'nominal' => 1000])
         ->assertSessionHasNoErrors();
 
-    expect($this->rekening->fresh()->saldo)->toBe('101000.00');
+    expect($this->rekening->fresh()->saldo)->toBe('106000.00');
 });
 
 it('menutup sesi menghitung saldo sistem dari modal, tabungan, koreksi, dan kas lain', function () {
@@ -200,16 +219,16 @@ it('laporan kas harian menampilkan modal, pemasukan, pengeluaran, dan selisih', 
             ->has('data.rincian', 2)
             ->where('kop.periode', 'Tanggal Jumat, 30 Oktober 2026'));
 
-    // Transaksi bendahara setelah sesi ditutup tetap masuk laporan, dengan peringatan.
+    // Transaksi sistem (tanpa user) setelah sesi ditutup tetap masuk laporan, dengan peringatan.
     $this->travel(1)->minutes();
-    app(TransaksiService::class)->setor($this->rekening, 1000, $this->bendahara);
+    app(TransaksiService::class)->setor($this->rekening, 1000);
 
     $this->actingAs($this->teller)->get('/laporan/harian?tanggal=2026-10-30')
         ->assertInertia(fn (Assert $page) => $page->where('data.setelah_tutup', true)->where('data.saldo_akhir', '526000.00'));
 });
 
 it('laporan kas harian tanpa sesi memakai modal 0 dan bisa diunduh Excel', function () {
-    app(TransaksiService::class)->setor($this->rekening, 40000, $this->bendahara);
+    app(TransaksiService::class)->setor($this->rekening, 40000);
     Excel::fake();
 
     $this->actingAs($this->teller)->get('/laporan/harian')

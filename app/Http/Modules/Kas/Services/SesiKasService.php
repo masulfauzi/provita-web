@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Sesi kas harian: satu sesi per tanggal transaksi, dipakai bersama semua teller.
- * Teller hanya boleh menggerakkan uang fisik selama sesi tanggal transaksi terbuka;
- * bendahara (permission kas.tanpa_sesi) bebas dari aturan ini.
+ * Sesi kas harian: satu sesi per tanggal transaksi, dipakai bersama semua petugas.
+ * Siapa pun (teller maupun bendahara) hanya boleh menggerakkan uang fisik selama
+ * sesi tanggal transaksi terbuka.
  */
 class SesiKasService
 {
@@ -151,12 +151,13 @@ class SesiKasService
     }
 
     /**
-     * Alasan transaksi uang fisik ditolak, atau null bila boleh. Dipanggil di dalam DB
-     * transaction pemanggil; baris sesi dibaca dengan shared lock agar tutup() menunggu.
+     * Alasan transaksi uang fisik ditolak, atau null bila boleh. Tanpa user (proses sistem,
+     * mis. command console) tidak diperiksa. Dipanggil di dalam DB transaction pemanggil;
+     * baris sesi dibaca dengan shared lock agar tutup() menunggu.
      */
     public function alasanTolak(?User $user): ?string
     {
-        if ($user === null || $user->can('kas.tanpa_sesi')) {
+        if ($user === null) {
             return null;
         }
 

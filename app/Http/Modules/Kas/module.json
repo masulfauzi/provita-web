@@ -13,7 +13,6 @@
         "kas.masuk": { "label": "Mencatat penerimaan kas", "roles": ["teller"] },
         "kas.keluar": { "label": "Mencatat pengeluaran kas", "roles": ["teller"] },
         "kas.batal": { "label": "Membatalkan penerimaan / pengeluaran kas", "roles": [] },
-        "kas.sesi": { "label": "Membuka & menutup sesi kas harian", "roles": ["teller"] },
-        "kas.tanpa_sesi": { "label": "Bertransaksi tanpa sesi kas", "roles": [] }
+        "kas.sesi": { "label": "Membuka & menutup sesi kas harian", "roles": ["teller"] }
     }
 }
