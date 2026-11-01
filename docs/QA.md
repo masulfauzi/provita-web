@@ -333,6 +333,7 @@ Login sebagai `teller`.
 | TUP-05 | Di Setor / Tarik, cari `9999999902` dan `99999999011`. | Rekening yang ditutup tidak muncul di pencarian. | | |
 | TUP-06 | Daftar rekening, filter status **Ditutup**. | R3 dan R4. | | |
 | TUP-07 | Login `bendahara`, buka buku tabungan R4. | Tidak ada tombol Koreksi (rekening sudah ditutup). | | |
+| TUP-08 | Buka **Data Master → Nasabah** dan lihat kolom **Total saldo**. | Budi **Rp 325.000** (3 rekening: 275.000 + 50.000 + 0), Citra Rp 0 (1 rekening, ditutup), Dedi **Rp 50.000** (1 rekening), Eko Rp 0 "Belum ada rekening". | | |
 
 ---
 
@@ -631,7 +632,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 8. Buka rekening | 17 | | | |
 | 9. Setor & tarik | 14 | | | |
 | 10. Koreksi transaksi | 6 | | | |
-| 11. Tutup rekening | 7 | | | |
+| 11. Tutup rekening | 8 | | | |
 | 12. Cetak buku tabungan | 12 | | | |
 | 13. Penerimaan kas | 11 | | | |
 | 14. Pengeluaran kas | 5 | | | |
@@ -644,7 +645,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 21. Log aktivitas | 8 | | | |
 | 22. Hak akses | 10 | | | |
 | 23. Uji umum & ketahanan | 8 | | | |
-| **Total** | **245** | | | |
+| **Total** | **246** | | | |
 
 **Daftar bug ditemukan**
 

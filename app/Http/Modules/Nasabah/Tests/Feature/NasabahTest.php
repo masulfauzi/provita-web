@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Modules\Nasabah\Models\Nasabah;
+use App\Http\Modules\Rekening\Models\Rekening;
+use App\Support\Money;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -35,6 +37,21 @@ it('teller melihat daftar nasabah', function () {
             ->component('Nasabah::Index')
             ->has('items.data', 3)
             ->has('jenisOptions', 3));
+});
+
+it('daftar nasabah menampilkan total saldo semua rekening', function () {
+    $budi = Nasabah::factory()->create(['nama' => 'Budi']);
+    Nasabah::factory()->create(['nama' => 'Citra']);
+    Rekening::factory()->for($budi)->saldoAwal('100000.00')->create();
+    Rekening::factory()->for($budi)->saldoAwal('50000.50')->create();
+
+    $this->actingAs($this->teller)->get('/nasabah')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('items.data.0.nama', 'Budi')
+            ->where('items.data.0.total_saldo', fn ($nilai) => Money::of((string) $nilai) === '150000.50')
+            ->where('items.data.0.rekening_count', 2)
+            ->where('items.data.1.total_saldo', null)
+            ->where('items.data.1.rekening_count', 0));
 });
 
 it('mencari dan memfilter nasabah', function () {

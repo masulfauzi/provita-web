@@ -18,6 +18,9 @@ class NasabahService
     public function paginate(string $search = '', array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Nasabah::query()
+            // Total saldo semua rekening nasabah (rekening tertutup bersaldo 0).
+            ->withSum('rekening as total_saldo', 'saldo')
+            ->withCount('rekening')
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->where('nama', 'like', "%{$search}%")
                 ->orWhere('nomor', 'like', "%{$search}%")

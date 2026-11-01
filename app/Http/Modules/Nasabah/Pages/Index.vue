@@ -10,6 +10,7 @@ import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
+import MoneyText from '@/Components/MoneyText.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { usePermission } from '@/composables/usePermission';
 
@@ -127,6 +128,14 @@ function lihat(event) {
             </Column>
             <Column header="Jenis">
                 <template #body="{ data }">{{ jenisLabel(data.jenis) }}</template>
+            </Column>
+            <Column header="Total saldo" class="text-right">
+                <template #body="{ data }">
+                    <MoneyText class="font-medium" :value="data.total_saldo ?? 0" />
+                    <div class="text-xs text-muted-color">
+                        {{ data.rekening_count ? `${data.rekening_count} rekening` : 'Belum ada rekening' }}
+                    </div>
+                </template>
             </Column>
             <Column header="Status">
                 <template #body="{ data }">
