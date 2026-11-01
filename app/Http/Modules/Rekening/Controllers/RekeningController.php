@@ -8,6 +8,7 @@ use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Http\Modules\Rekening\Requests\BukaRekeningRequest;
+use App\Http\Modules\Rekening\Services\BukuTabunganService;
 use App\Http\Modules\Rekening\Services\JenisRekeningService;
 use App\Http\Modules\Rekening\Services\RekeningService;
 use App\Http\Modules\Transaksi\Exceptions\TransaksiDitolakException;
@@ -28,6 +29,7 @@ class RekeningController extends Controller
         protected RekeningService $service,
         protected TransaksiService $transaksi,
         protected JenisRekeningService $jenis,
+        protected BukuTabunganService $buku,
     ) {}
 
     public function index(Request $request): Response
@@ -100,11 +102,55 @@ class RekeningController extends Controller
                     'sudah_dibalik' => $t->pembalik !== null,
                 ]),
             'jenisTransaksi' => Transaksi::JENIS,
+            'belumDicetak' => fn () => $this->buku->jumlahBelumDicetak($rekening),
             'penutupan' => $rekening->isAktif() ? [
                 'biaya' => $this->transaksi->biayaPenutupan($rekening->saldo),
                 'diserahkan' => Money::sub($rekening->saldo, $this->transaksi->biayaPenutupan($rekening->saldo)),
             ] : null,
         ]);
+    }
+
+    /**
+     * Halaman cetak buku tabungan: pilih mutasi (belum dicetak / rentang nomor / rentang
+     * tanggal, lalu centang manual) dan posisi baris mulai di halaman buku.
+     */
+    public function cetak(Request $request, Rekening $rekening): Response
+    {
+        Gate::authorize('view', $rekening);
+
+        $filter = $request->validate([
+            'mode' => ['nullable', 'in:belum,nomor,tanggal'],
+            'dari_no' => ['nullable', 'integer', 'min:1'],
+            'sampai_no' => ['nullable', 'integer', 'min:1'],
+            'dari' => ['nullable', 'date_format:Y-m-d'],
+            'sampai' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $rekening->load('nasabah:id,nomor,nama,kelas');
+
+        return Inertia::render('Rekening::Cetak', [
+            'rekening' => $rekening->only('id', 'nomor', 'nasabah'),
+            'filter' => ['mode' => 'belum', ...$filter],
+            'baris' => $this->buku->baris($rekening, $filter),
+            'posisi' => $this->buku->posisiBerikutnya($rekening),
+            'terakhir' => $this->buku->posisiTerakhir($rekening),
+            'tataLetak' => $this->buku->tataLetak(),
+        ]);
+    }
+
+    public function catatCetak(Request $request, Rekening $rekening): RedirectResponse
+    {
+        $data = $request->validate([
+            'transaksi' => ['required', 'array', 'min:1'],
+            'transaksi.*' => ['uuid'],
+            'halaman' => ['required', 'integer', 'min:1', 'max:999'],
+            'baris' => ['required', 'integer', 'min:1'],
+        ], attributes: ['transaksi' => 'baris mutasi']);
+
+        $jumlah = $this->buku->catat($rekening, $data['transaksi'], (int) $data['halaman'], (int) $data['baris'], $request->user());
+        $berikutnya = $this->buku->posisiBerikutnya($rekening);
+
+        return back()->with('success', "{$jumlah} baris ditandai sudah dicetak. Cetak berikutnya mulai halaman {$berikutnya['halaman']} baris {$berikutnya['baris']}.");
     }
 
     public function tutup(Request $request, Rekening $rekening): RedirectResponse

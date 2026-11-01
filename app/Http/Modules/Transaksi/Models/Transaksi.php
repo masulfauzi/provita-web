@@ -4,6 +4,7 @@ namespace App\Http\Modules\Transaksi\Models;
 
 use App\Http\Modules\Akuntansi\Models\Akun;
 use App\Http\Modules\Nasabah\Models\Nasabah;
+use App\Http\Modules\Rekening\Models\CetakBukuTabungan;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Models\User;
 use App\Support\Finance\Immutable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -133,6 +135,16 @@ class Transaksi extends Model
     public function pembalik(): HasOne
     {
         return $this->hasOne(self::class, 'pembalik_dari_id');
+    }
+
+    /**
+     * Riwayat cetak di buku tabungan.
+     *
+     * @return HasMany<CetakBukuTabungan, $this>
+     */
+    public function cetakBuku(): HasMany
+    {
+        return $this->hasMany(CetakBukuTabungan::class);
     }
 
     public function isKasLain(): bool

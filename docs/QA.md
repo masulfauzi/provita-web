@@ -16,18 +16,19 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 9. [Setor & tarik](#9-setor--tarik)
 10. [Koreksi transaksi](#10-koreksi-transaksi)
 11. [Tutup rekening](#11-tutup-rekening)
-12. [Penerimaan kas](#12-penerimaan-kas)
-13. [Pengeluaran kas](#13-pengeluaran-kas)
-14. [Pembatalan bukti kas](#14-pembatalan-bukti-kas)
-15. [Bagan akun](#15-bagan-akun)
-16. [Jurnal umum](#16-jurnal-umum)
-17. [Laporan keuangan](#17-laporan-keuangan)
-18. [Dashboard](#18-dashboard)
-19. [Tutup sesi kas & laporan kas harian](#19-tutup-sesi-kas--laporan-kas-harian)
-20. [Log aktivitas](#20-log-aktivitas)
-21. [Hak akses per peran](#21-hak-akses-per-peran)
-22. [Uji umum & ketahanan](#22-uji-umum--ketahanan)
-23. [Ringkasan hasil](#23-ringkasan-hasil)
+12. [Cetak buku tabungan](#12-cetak-buku-tabungan)
+13. [Penerimaan kas](#13-penerimaan-kas)
+14. [Pengeluaran kas](#14-pengeluaran-kas)
+15. [Pembatalan bukti kas](#15-pembatalan-bukti-kas)
+16. [Bagan akun](#16-bagan-akun)
+17. [Jurnal umum](#17-jurnal-umum)
+18. [Laporan keuangan](#18-laporan-keuangan)
+19. [Dashboard](#19-dashboard)
+20. [Tutup sesi kas & laporan kas harian](#20-tutup-sesi-kas--laporan-kas-harian)
+21. [Log aktivitas](#21-log-aktivitas)
+22. [Hak akses per peran](#22-hak-akses-per-peran)
+23. [Uji umum & ketahanan](#23-uji-umum--ketahanan)
+24. [Ringkasan hasil](#24-ringkasan-hasil)
 
 ---
 
@@ -98,7 +99,7 @@ Semua transaksi dilakukan pada **satu tanggal transaksi**, yaitu tanggal hari pe
 
 ### 0.5 Perilaku yang memang begitu (bukan bug)
 
-- Belum ada fitur **cetak struk setor/tarik** dan **cetak buku tabungan**. "Buku tabungan" adalah halaman daftar mutasi rekening.
+- Belum ada fitur **cetak struk setor/tarik**. Buku tabungan dicetak lewat tombol **Cetak buku** di halaman rekening (bagian 12); bila tidak ada printer buku tabungan, pilih "Simpan sebagai PDF" di dialog cetak browser.
 - Menu **Pinjaman** masih bertuliskan segera hadir.
 - Belum ada saldo minimal mengendap: rekening boleh bersaldo Rp 0.
 - Tidak ada akun admin bawaan. Akun admin dibuat sendiri di bagian 3.
@@ -335,7 +336,28 @@ Login sebagai `teller`.
 
 ---
 
-## 12. Penerimaan kas
+## 12. Cetak buku tabungan
+
+Login sebagai `teller`. Kolom yang dicetak: No, Tanggal, Sandi, Debit, Kredit, Saldo, Paraf. Sandi: **01** setoran, **02** penarikan, **03** koreksi, **04** biaya administrasi, **05** tutup rekening. Paraf berisi inisial petugas yang mencatat transaksi (Teller → **TE**, Bendahara → **BE**). Skenario ini tidak menambah transaksi, jadi angka bagian lain tidak berubah.
+
+| ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
+| --- | --- | --- | --- | --- |
+| CBT-01 | Buka buku tabungan R1. | Ada tombol **Cetak buku** dengan angka **5** (baris belum dicetak). | | |
+| CBT-02 | Klik **Cetak buku**. | Pilihan **Belum dicetak** aktif, 5 baris tercentang: 1 (01, kredit 100.000, saldo 100.000, TE), 2 (01, kredit 250.000, saldo 350.000, TE), 3 (02, debit 75.000, saldo 275.000, TE), 4 (01, kredit 10.000, saldo 285.000, TE), 5 (03, debit 10.000, saldo 275.000, BE). Tanggal dd/mm/yy = T. "Buku ini belum pernah dicetak. 20 baris per halaman." Mulai halaman 1 baris 1; pratinjau menampilkan 5 baris di atas. | | |
+| CBT-03 | Klik **Cetak**. Di dialog cetak browser, lihat pratinjaunya lalu tutup/batalkan. Pada pertanyaan "Apakah 5 baris buku tabungan tercetak dengan benar?" klik **Belum, jangan tandai**. | Pratinjau cetak hanya berisi 5 baris angka (tanpa menu, judul, garis, atau tombol). Setelah memilih Belum, semua baris tetap berstatus **Belum**. | | |
+| CBT-04 | Klik **Cetak** lagi, cetak (atau simpan PDF), lalu klik **Ya, tandai sudah dicetak**. | "5 baris ditandai sudah dicetak. Cetak berikutnya mulai halaman 1 baris 6." Tabel: "Semua mutasi sudah dicetak." Info: "Terakhir terisi: halaman 1 baris 5." Di buku tabungan R1, angka pada tombol Cetak buku hilang. | | |
+| CBT-05 | **Rentang nomor:** pilih Rentang nomor, Dari No `2` Sampai No `3`, klik **Tampilkan**. Ubah Mulai halaman 1 baris `2`. Cetak → Ya. | Tampil baris 2 dan 3 berstatus **Sudah dicetak**. Pratinjau menaruhnya di baris 2–3. Setelah ditandai, statusnya "Sudah dicetak 2×". | | |
+| CBT-06 | **Halaman berganti:** Rentang nomor 1–5, Mulai halaman 1 baris `18`. Jangan cetak. | Info "Mencetak 5 baris di 2 halaman (halaman 1, 2)…": baris 1–3 di halaman 1 (baris 18–20), baris 4–5 di halaman 2. | | |
+| CBT-07 | **Rentang tanggal:** buka Cetak buku R5 (Dedi), pilih Rentang tanggal T s.d. T, klik **Tampilkan**. | 3 baris: 1 (01, 200.000), 2 (01, 100.000), 3 (02, debit 250.000, saldo 50.000). | | |
+| CBT-08 | **Centang manual:** di R5 pilihan Belum dicetak, hilangkan centang baris 2. Cetak → Ya. Lalu buka lagi pilihan Belum dicetak. | Pratinjau hanya baris 1 dan 3, berurutan di baris 1 dan 2 halaman buku. Setelah ditandai, yang tersisa belum dicetak hanya baris 2, dan posisi berikutnya halaman 1 baris 3. | | |
+| CBT-09 | **Rekening ditutup:** buka buku tabungan R3 (ditutup) → Cetak buku. | Tetap bisa dicetak. Baris biaya administrasi bersandi **04** (debit 5.000) dan penutupan **05** (debit 15.000, saldo 0). | | |
+| CBT-10 | Login `bendahara`, buka Cetak buku R1. | Halaman bisa dibuka dan dicetak oleh bendahara. | | |
+| CBT-11 | **Atur posisi:** sebagai bendahara buka Pengaturan → kartu **Umum**, ubah "Baris per halaman buku tabungan" menjadi `25` dan "Jarak atas cetak buku (mm)" menjadi `30`. Simpan, buka Cetak buku R1. Kembalikan ke `20` dan `20`. | Info menjadi "25 baris per halaman" dan pratinjau bergeser ke bawah. Setelah dikembalikan, kembali 20 baris. | | |
+| CBT-12 | Login `admin1`, ketik alamat `/rekening/<id R1>/cetak`. | Halaman **403**. | | |
+
+---
+
+## 13. Penerimaan kas
 
 Login sebagai `teller`. Menu **Kas → Penerimaan kas**.
 
@@ -357,7 +379,7 @@ Saldo kas tersedia saat masuk bagian ini harus **Rp 383.000**.
 
 ---
 
-## 13. Pengeluaran kas
+## 14. Pengeluaran kas
 
 Login sebagai `teller`. Menu **Kas → Pengeluaran kas**.
 
@@ -371,7 +393,7 @@ Login sebagai `teller`. Menu **Kas → Pengeluaran kas**.
 
 ---
 
-## 14. Pembatalan bukti kas
+## 15. Pembatalan bukti kas
 
 Login sebagai `bendahara`.
 
@@ -387,7 +409,7 @@ Login sebagai `bendahara`.
 
 ---
 
-## 15. Bagan akun
+## 16. Bagan akun
 
 Login sebagai `bendahara`. Menu **Keuangan → Bagan akun**.
 
@@ -405,7 +427,7 @@ Login sebagai `bendahara`. Menu **Keuangan → Bagan akun**.
 
 ---
 
-## 16. Jurnal umum
+## 17. Jurnal umum
 
 Login sebagai `bendahara`. Menu **Keuangan → Jurnal umum**.
 
@@ -428,11 +450,11 @@ Login sebagai `bendahara`. Menu **Keuangan → Jurnal umum**.
 
 ---
 
-## 17. Laporan keuangan
+## 18. Laporan keuangan
 
 Login sebagai `teller`. Menu **Laporan → Laporan keuangan**. Periode bawaan: tanggal 1 bulan ini s.d. T.
 
-**Angka yang diharapkan setelah bagian 1–16**
+**Angka yang diharapkan setelah bagian 1–17**
 
 | Pos | Nilai |
 | --- | --- |
@@ -463,7 +485,7 @@ Login sebagai `teller`. Menu **Laporan → Laporan keuangan**. Periode bawaan: t
 
 ---
 
-## 18. Dashboard
+## 19. Dashboard
 
 Login sebagai `teller`. Menu **Dashboard**.
 
@@ -483,7 +505,7 @@ Login sebagai `teller`. Menu **Dashboard**.
 
 ---
 
-## 19. Tutup sesi kas & laporan kas harian
+## 20. Tutup sesi kas & laporan kas harian
 
 Login sebagai `teller`. Pastikan Tanggal transaksi aktif sudah dikembalikan ke **T** (DSB-10).
 
@@ -522,7 +544,7 @@ Biaya administrasi penutupan (Rp 5.000 dan Rp 3.000) tidak dihitung karena tidak
 
 ---
 
-## 20. Log aktivitas
+## 21. Log aktivitas
 
 Login sebagai `bendahara`. Menu **Sistem → Log aktivitas**.
 
@@ -539,11 +561,11 @@ Login sebagai `bendahara`. Menu **Sistem → Log aktivitas**.
 
 ---
 
-## 21. Hak akses per peran
+## 22. Hak akses per peran
 
 Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesuai tabel.
 
-### 21.1 Menu yang tampil
+### 22.1 Menu yang tampil
 
 | Menu | teller | admin1 | bendahara |
 | --- | --- | --- | --- |
@@ -565,7 +587,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
-| HAK-01 | Login `teller`, cocokkan menu dengan tabel 21.1. | Sesuai kolom teller. | | |
+| HAK-01 | Login `teller`, cocokkan menu dengan tabel 22.1. | Sesuai kolom teller. | | |
 | HAK-02 | Login `admin1` (`Rahasia123`), cocokkan menu. | Sesuai kolom admin1. | | |
 | HAK-03 | Login `bendahara`, cocokkan menu. Buka **Pinjaman**. | Sesuai kolom bendahara. Pinjaman menampilkan halaman segera hadir. | | |
 | HAK-04 | Sebagai `teller`, ketik langsung di alamat browser: `/jurnal`, `/akun`, `/pengguna`, `/log-aktivitas`, `/jenis-rekening`, `/pinjaman`. | Setiap alamat menampilkan halaman **403 / tidak punya akses**, bukan isi halaman. | | |
@@ -578,9 +600,9 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 ---
 
-## 22. Uji umum & ketahanan
+## 23. Uji umum & ketahanan
 
-> **Perhatian:** skenario UMM-05 dan UMM-06 menambah transaksi, sehingga angka di bagian 17, 18, dan 19 tidak berlaku lagi setelahnya. Keduanya dikerjakan pada tanggal T+1 dengan sesi kas yang dibuka di TSK-10.
+> **Perhatian:** skenario UMM-05 dan UMM-06 menambah transaksi, sehingga angka di bagian 18, 19, dan 20 tidak berlaku lagi setelahnya. Keduanya dikerjakan pada tanggal T+1 dengan sesi kas yang dibuka di TSK-10.
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
@@ -595,7 +617,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 ---
 
-## 23. Ringkasan hasil
+## 24. Ringkasan hasil
 
 | Bagian | Jumlah skenario | ✅ | ❌ | ⏭️ |
 | --- | --- | --- | --- | --- |
@@ -610,18 +632,19 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 9. Setor & tarik | 14 | | | |
 | 10. Koreksi transaksi | 6 | | | |
 | 11. Tutup rekening | 7 | | | |
-| 12. Penerimaan kas | 11 | | | |
-| 13. Pengeluaran kas | 5 | | | |
-| 14. Pembatalan bukti kas | 7 | | | |
-| 15. Bagan akun | 9 | | | |
-| 16. Jurnal umum | 14 | | | |
-| 17. Laporan keuangan | 12 | | | |
-| 18. Dashboard | 11 | | | |
-| 19. Tutup sesi kas & laporan kas harian | 10 | | | |
-| 20. Log aktivitas | 8 | | | |
-| 21. Hak akses | 10 | | | |
-| 22. Uji umum & ketahanan | 8 | | | |
-| **Total** | **233** | | | |
+| 12. Cetak buku tabungan | 12 | | | |
+| 13. Penerimaan kas | 11 | | | |
+| 14. Pengeluaran kas | 5 | | | |
+| 15. Pembatalan bukti kas | 7 | | | |
+| 16. Bagan akun | 9 | | | |
+| 17. Jurnal umum | 14 | | | |
+| 18. Laporan keuangan | 12 | | | |
+| 19. Dashboard | 11 | | | |
+| 20. Tutup sesi kas & laporan kas harian | 10 | | | |
+| 21. Log aktivitas | 8 | | | |
+| 22. Hak akses | 10 | | | |
+| 23. Uji umum & ketahanan | 8 | | | |
+| **Total** | **245** | | | |
 
 **Daftar bug ditemukan**
 

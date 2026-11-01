@@ -11,6 +11,7 @@
         "rekening.lihat": { "label": "Lihat rekening & buku tabungan", "roles": ["teller"] },
         "rekening.buka": { "label": "Membuka rekening", "roles": ["teller"] },
         "rekening.tutup": { "label": "Menutup rekening", "roles": ["teller"] },
+        "rekening.cetak": { "label": "Cetak buku tabungan", "roles": ["teller"] },
         "jenis_rekening.lihat": { "label": "Lihat jenis rekening", "roles": ["admin"] },
         "jenis_rekening.tambah": { "label": "Tambah jenis rekening", "roles": ["admin"] },
         "jenis_rekening.ubah": { "label": "Ubah / nonaktifkan jenis rekening", "roles": ["admin"] },

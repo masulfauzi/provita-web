@@ -20,6 +20,7 @@ const props = defineProps({
     mutasi: { type: Object, required: true },
     jenisTransaksi: { type: Object, default: () => ({}) },
     penutupan: { type: Object, default: null },
+    belumDicetak: { type: Number, default: 0 },
 });
 
 const { can } = usePermission();
@@ -74,6 +75,17 @@ function kirimKoreksi() {
         <Tag :value="aktif ? 'Aktif' : 'Ditutup'" :severity="aktif ? 'success' : 'secondary'" />
         <Link :href="`/nasabah/${rekening.nasabah.id}`">
             <Button label="Data nasabah" icon="pi pi-user" severity="secondary" text />
+        </Link>
+        <Link v-if="can('rekening.cetak')" :href="`/rekening/${rekening.id}/cetak`">
+            <Button
+                v-tooltip.bottom="belumDicetak ? `${belumDicetak} baris belum dicetak` : 'Semua baris sudah dicetak'"
+                label="Cetak buku"
+                icon="pi pi-print"
+                severity="secondary"
+                outlined
+                :badge="belumDicetak ? String(belumDicetak) : undefined"
+                badge-severity="warn"
+            />
         </Link>
         <template v-if="aktif">
             <Link v-if="can('transaksi.setor')" :href="`/transaksi?rekening=${rekening.id}&jenis=setor`">

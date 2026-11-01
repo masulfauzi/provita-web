@@ -11,6 +11,8 @@ Route::middleware('can:rekening.lihat')->prefix('rekening')->name('rekening.')->
     Route::post('/', [RekeningController::class, 'store'])->middleware('can:rekening.buka')->name('store');
     Route::get('/{rekening}', [RekeningController::class, 'show'])->name('show');
     Route::post('/{rekening}/tutup', [RekeningController::class, 'tutup'])->middleware('can:rekening.tutup')->name('tutup');
+    Route::get('/{rekening}/cetak', [RekeningController::class, 'cetak'])->middleware('can:rekening.cetak')->name('cetak');
+    Route::post('/{rekening}/cetak', [RekeningController::class, 'catatCetak'])->middleware('can:rekening.cetak')->name('cetak.catat');
 });
 
 Route::middleware('can:jenis_rekening.lihat')->group(function () {
