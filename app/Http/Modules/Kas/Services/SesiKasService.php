@@ -2,6 +2,7 @@
 
 namespace App\Http\Modules\Kas\Services;
 
+use App\Http\Modules\Autodebet\Services\AutodebetService;
 use App\Http\Modules\Kas\Models\SesiKas;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
@@ -21,6 +22,13 @@ use Illuminate\Validation\ValidationException;
  */
 class SesiKasService
 {
+    /**
+     * Ringkasan autodebet yang diproses pada buka() terakhir.
+     *
+     * @var array{berhasil: int, gagal: int, selesai: int, total: string}|null
+     */
+    public ?array $autodebet = null;
+
     public function __construct(protected PengaturanService $pengaturan) {}
 
     /**
@@ -99,7 +107,7 @@ class SesiKasService
         }
 
         try {
-            return DB::transaction(function () use ($modal, $tanggal, $user, $siswa) {
+            $sesi = DB::transaction(function () use ($modal, $tanggal, $user, $siswa) {
                 if ($ada = SesiKas::query()->whereDate('tanggal', $tanggal)->lockForUpdate()->first()) {
                     throw ValidationException::withMessages([
                         'modal_awal' => "Sesi kas tanggal {$this->tanggal($tanggal)} sudah ".($ada->isDitutup() ? 'ditutup.' : 'dibuka.'),
@@ -130,6 +138,11 @@ class SesiKasService
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['modal_awal' => "Sesi kas tanggal {$this->tanggal($tanggal)} sudah dibuka."]);
         }
+
+        // Autodebet yang jatuh tempo s.d. tanggal ini diproses begitu sesi dibuka.
+        $this->autodebet = class_exists(AutodebetService::class) ? app(AutodebetService::class)->proses($tanggal, $user) : null;
+
+        return $sesi;
     }
 
     /**
@@ -210,7 +223,8 @@ class SesiKasService
 
         $transaksi = Transaksi::query()
             ->whereDate('tanggal', $tanggal)
-            ->where('jenis', '!=', Transaksi::BIAYA)
+            // Biaya administrasi dan autodebet tidak memindahkan uang fisik.
+            ->whereNotIn('jenis', [Transaksi::BIAYA, ...Transaksi::JENIS_PINDAH])
             ->with([
                 'rekening:id,nomor,nasabah_id',
                 'rekening.nasabah:id,nama',

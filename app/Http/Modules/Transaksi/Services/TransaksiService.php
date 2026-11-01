@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\Finance\FinancialTransaction;
 use App\Support\Money;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Satu-satunya pintu untuk mengubah saldo rekening. Semua operasi
@@ -48,6 +49,11 @@ class TransaksiService
             throw TransaksiDitolakException::pembalikTidakBisaDibalik();
         }
 
+        // Pindah buku selalu berpasangan; membalik satu sisi akan merusak pasangannya.
+        if (in_array($transaksi->jenis, Transaksi::JENIS_PINDAH, true)) {
+            throw TransaksiDitolakException::autodebetTidakBisaDibalik();
+        }
+
         return $this->catat(
             $transaksi->rekening_id,
             Transaksi::PEMBALIK,
@@ -57,6 +63,31 @@ class TransaksiService
             $alasan ?? "Pembalik transaksi {$transaksi->id}",
             $transaksi,
         );
+    }
+
+    /**
+     * Pindah buku dari rekening sumber ke rekening tujuan (autodebet). Tidak ada uang fisik,
+     * sehingga tidak memerlukan sesi kas. Kedua rekening dikunci dalam urutan id yang tetap
+     * agar dua proses yang bersilangan tidak saling menunggu (deadlock).
+     *
+     * @return array{keluar: Transaksi, masuk: Transaksi}
+     */
+    public function pindahBuku(Rekening $sumber, Rekening $tujuan, int|string $nominal, ?User $user = null, ?string $keterangan = null): array
+    {
+        $nominal = $this->nominal($nominal);
+
+        return DB::transaction(function () use ($sumber, $tujuan, $nominal, $user, $keterangan) {
+            $rekening = Rekening::query()->whereKey([$sumber->id, $tujuan->id])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            [$dari, $ke] = [$rekening->get($sumber->id), $rekening->get($tujuan->id)];
+
+            $this->pastikanAktif($dari);
+            $this->pastikanAktif($ke);
+
+            return [
+                'keluar' => $this->mutasi($dari, Transaksi::PINDAH_KELUAR, $nominal, Money::negate($nominal), $user, $keterangan ?? "Autodebet ke {$ke->nomor}", cekSesi: false),
+                'masuk' => $this->mutasi($ke, Transaksi::PINDAH_MASUK, $nominal, $nominal, $user, $keterangan ?? "Autodebet dari {$dari->nomor}", cekSesi: false),
+            ];
+        }, FinancialTransaction::ATTEMPTS);
     }
 
     /**
@@ -160,9 +191,10 @@ class TransaksiService
         ?User $user,
         ?string $keterangan,
         ?Transaksi $pembalikDari = null,
+        bool $cekSesi = true,
     ): Transaksi {
         // Teller hanya boleh bertransaksi selama sesi kas tanggal transaksi terbuka.
-        if (class_exists(SesiKasService::class) && $alasan = app(SesiKasService::class)->alasanTolak($user)) {
+        if ($cekSesi && class_exists(SesiKasService::class) && $alasan = app(SesiKasService::class)->alasanTolak($user)) {
             throw TransaksiDitolakException::sesiKas($alasan);
         }
 

@@ -45,8 +45,15 @@ class SesiKasController extends Controller
 
         $sesi = $this->service->buka((string) $data['modal_awal'], $data['petugas'], $request->user());
 
+        $autodebet = $this->service->autodebet;
+        $pesanAutodebet = $autodebet && $autodebet['berhasil'] + $autodebet['gagal'] > 0
+            ? " Autodebet: {$autodebet['berhasil']} berhasil (".Money::format($autodebet['total']).')'
+                .($autodebet['gagal'] ? ", {$autodebet['gagal']} gagal" : '')
+                .($autodebet['selesai'] ? ", {$autodebet['selesai']} mencapai target" : '').'.'
+            : '';
+
         return back()->with('success', 'Sesi kas '.$sesi->tanggal->translatedFormat('j F Y').' dibuka dengan modal awal '.Money::format($sesi->modal_awal)
-            .'. Teller piket: '.$sesi->petugas->pluck('nama')->join(', ').' (hadir pukul '.$sesi->dibuka_at->format('H.i').').');
+            .'. Teller piket: '.$sesi->petugas->pluck('nama')->join(', ').' (hadir pukul '.$sesi->dibuka_at->format('H.i').').'.$pesanAutodebet);
     }
 
     public function tutup(Request $request, SesiKas $sesi): RedirectResponse

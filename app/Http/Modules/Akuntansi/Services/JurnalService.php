@@ -28,6 +28,9 @@ class JurnalService
         Transaksi::TARIK => [Akun::SIMPANAN, Akun::KAS],
         Transaksi::PENUTUPAN => [Akun::SIMPANAN, Akun::KAS],
         Transaksi::BIAYA => [Akun::SIMPANAN, Akun::PENDAPATAN_ADMINISTRASI],
+        // Autodebet memindahkan simpanan antarrekening nasabah: tidak mengubah saldo akun mana pun.
+        Transaksi::PINDAH_KELUAR => [Akun::SIMPANAN, Akun::SIMPANAN],
+        Transaksi::PINDAH_MASUK => [Akun::SIMPANAN, Akun::SIMPANAN],
     ];
 
     public function __construct(protected PengaturanService $pengaturan) {}

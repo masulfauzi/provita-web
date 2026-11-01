@@ -21,6 +21,7 @@ const props = defineProps({
     jenisTransaksi: { type: Object, default: () => ({}) },
     penutupan: { type: Object, default: null },
     belumDicetak: { type: Number, default: 0 },
+    autodebet: { type: Object, default: () => ({ ada: false, item: null }) },
 });
 
 const { can } = usePermission();
@@ -104,6 +105,37 @@ function kirimKoreksi() {
             />
         </template>
     </PageHeader>
+
+    <!-- Autodebet: hanya untuk rekening selain Tabungan Pelajar. -->
+    <div
+        v-if="autodebet.ada && can('autodebet.lihat') && (autodebet.item || (aktif && can('autodebet.kelola')))"
+        class="card mb-5 flex flex-wrap items-center justify-between gap-3"
+    >
+        <div v-if="autodebet.item" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span class="font-medium"><i class="pi pi-sync text-primary" /> Autodebet</span>
+            <span>
+                <MoneyText :value="autodebet.item.nominal" />
+                {{ autodebet.item.periode === 'mingguan' ? 'tiap minggu' : `tiap tanggal ${autodebet.item.hari}` }}
+            </span>
+            <span class="text-muted-color">
+                terkumpul <MoneyText :value="autodebet.item.terkumpul" />
+                <template v-if="autodebet.item.target"> / <MoneyText :value="autodebet.item.target" /></template>
+            </span>
+            <Tag
+                :value="{ aktif: 'Aktif', berhenti: 'Dihentikan', selesai: 'Target tercapai' }[autodebet.item.status]"
+                :severity="{ aktif: 'success', berhenti: 'secondary', selesai: 'info' }[autodebet.item.status]"
+            />
+        </div>
+        <div v-else class="text-sm text-muted-color">
+            <i class="pi pi-sync" /> Rekening ini belum punya autodebet dari Tabungan Pelajar.
+        </div>
+        <Link v-if="autodebet.item" :href="`/autodebet/${autodebet.item.id}`">
+            <Button label="Lihat autodebet" icon="pi pi-arrow-right" severity="secondary" text size="small" />
+        </Link>
+        <Link v-else :href="`/autodebet?rekening=${rekening.id}`">
+            <Button label="Buat autodebet" icon="pi pi-plus" size="small" outlined />
+        </Link>
+    </div>
 
     <div class="mb-5 grid gap-4 md:grid-cols-3">
         <div class="card">

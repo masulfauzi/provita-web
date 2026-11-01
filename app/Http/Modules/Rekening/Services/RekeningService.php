@@ -43,11 +43,13 @@ class RekeningService
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function cariAktif(string $search, int $limit = 10): Collection
+    public function cariAktif(string $search, int $limit = 10, bool $nonUtama = false): Collection
     {
         return Rekening::query()
             ->with(['nasabah:id,nomor,nama,kelas', 'jenisRekening:id,nama'])
             ->where('status', Rekening::AKTIF)
+            // Hanya rekening ber-prefix (mis. Wisata/Wisuda), bukan rekening utama.
+            ->when($nonUtama, fn (Builder $query) => $query->whereHas('jenisRekening', fn (Builder $j) => $j->whereNotNull('prefix')))
             ->when($search !== '', fn (Builder $query) => $this->cari($query, $search))
             ->orderBy('nomor')
             ->limit($limit)

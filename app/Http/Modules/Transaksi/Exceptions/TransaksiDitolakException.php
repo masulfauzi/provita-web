@@ -36,6 +36,11 @@ class TransaksiDitolakException extends RuntimeException
         return new self($alasan);
     }
 
+    public static function autodebetTidakBisaDibalik(): self
+    {
+        return new self('Transaksi autodebet tidak bisa dikoreksi per baris.');
+    }
+
     public static function bukanTransaksiTabungan(): self
     {
         return new self('Penerimaan/pengeluaran kas dibatalkan lewat menu Kas.');

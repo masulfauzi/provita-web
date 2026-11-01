@@ -173,7 +173,7 @@ it('menu tabungan tampil untuk teller', function () {
     $this->actingAs($this->teller)->get('/dashboard')
         ->assertInertia(function (Assert $page) {
             $tabungan = collect($page->toArray()['props']['menu'])->firstWhere('label', 'Tabungan');
-            expect(collect($tabungan['items'])->pluck('label')->all())->toBe(['Setor / Tarik', 'Rekening']);
+            expect(collect($tabungan['items'])->pluck('label')->all())->toBe(['Setor / Tarik', 'Rekening', 'Autodebet']);
         });
 });
 

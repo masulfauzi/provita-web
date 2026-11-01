@@ -1,0 +1,20 @@
+{
+  "name": "Autodebet",
+  "label": "Autodebet",
+  "icon": "pi pi-sync",
+  "order": 210,
+  "menu": [
+    {
+      "label": "Autodebet",
+      "route": "autodebet.index",
+      "icon": "pi pi-sync",
+      "permission": "autodebet.lihat",
+      "group": "Tabungan",
+      "order": 202
+    }
+  ],
+  "permissions": {
+    "autodebet.lihat": { "label": "Lihat autodebet", "roles": ["teller"] },
+    "autodebet.kelola": { "label": "Buat, ubah, hentikan autodebet", "roles": ["teller"] }
+  }
+}

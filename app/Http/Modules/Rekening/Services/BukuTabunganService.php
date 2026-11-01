@@ -26,6 +26,8 @@ class BukuTabunganService
         Transaksi::PEMBALIK => '03',
         Transaksi::BIAYA => '04',
         Transaksi::PENUTUPAN => '05',
+        Transaksi::PINDAH_KELUAR => '06',
+        Transaksi::PINDAH_MASUK => '07',
     ];
 
     /** Lebar kolom No, Tanggal, Sandi, Debit, Kredit, Saldo, Paraf (mm). */

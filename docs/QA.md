@@ -25,10 +25,11 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 18. [Laporan keuangan](#18-laporan-keuangan)
 19. [Dashboard](#19-dashboard)
 20. [Tutup sesi kas & laporan kas harian](#20-tutup-sesi-kas--laporan-kas-harian)
-21. [Log aktivitas](#21-log-aktivitas)
-22. [Hak akses per peran](#22-hak-akses-per-peran)
-23. [Uji umum & ketahanan](#23-uji-umum--ketahanan)
-24. [Ringkasan hasil](#24-ringkasan-hasil)
+21. [Autodebet](#21-autodebet)
+22. [Log aktivitas](#22-log-aktivitas)
+23. [Hak akses per peran](#23-hak-akses-per-peran)
+24. [Uji umum & ketahanan](#24-uji-umum--ketahanan)
+25. [Ringkasan hasil](#25-ringkasan-hasil)
 
 ---
 
@@ -339,7 +340,7 @@ Login sebagai `teller`.
 
 ## 12. Cetak buku tabungan
 
-Login sebagai `teller`. Kolom yang dicetak: No, Tanggal, Sandi, Debit, Kredit, Saldo, Paraf. Sandi: **01** setoran, **02** penarikan, **03** koreksi, **04** biaya administrasi, **05** tutup rekening. Paraf berisi inisial petugas yang mencatat transaksi (Teller → **TE**, Bendahara → **BE**). Skenario ini tidak menambah transaksi, jadi angka bagian lain tidak berubah.
+Login sebagai `teller`. Kolom yang dicetak: No, Tanggal, Sandi, Debit, Kredit, Saldo, Paraf. Sandi: **01** setoran, **02** penarikan, **03** koreksi, **04** biaya administrasi, **05** tutup rekening, **06** autodebet keluar, **07** autodebet masuk. Paraf berisi inisial petugas yang mencatat transaksi (Teller → **TE**, Bendahara → **BE**). Skenario ini tidak menambah transaksi, jadi angka bagian lain tidak berubah.
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
@@ -545,7 +546,36 @@ Biaya administrasi penutupan (Rp 5.000 dan Rp 3.000) tidak dihitung karena tidak
 
 ---
 
-## 21. Log aktivitas
+## 21. Autodebet
+
+Autodebet memindahbukukan saldo **Tabungan Pelajar** nasabah ke rekening tabungan lain miliknya (Wisata, Wisuda, Foto Katalog, Pendidikan, dst.) secara mingguan atau bulanan. Autodebet diproses otomatis **saat sesi kas dibuka**, untuk semua jadwal yang jatuh tempo sampai tanggal transaksi (termasuk yang terlewat). Tidak ada uang fisik, jadi kas teller tidak berubah. Di buku tabungan sandinya **06** (autodebet keluar) dan **07** (autodebet masuk).
+
+Login sebagai `teller`. Saat mulai: tanggal transaksi **T+1** dengan sesi kas terbuka (TSK-10), R1 Budi (Tabungan Pelajar) Rp 275.000, R2 Budi (Tabungan Pendidikan) Rp 50.000. Notasi **H** = nama hari dari tanggal T+2 (mis. Rabu).
+
+**Cara pindah tanggal** (dipakai beberapa kali di bawah): Kas → Sesi kas → isi uang fisik sama dengan saldo seharusnya → **Tutup sesi**; Pengaturan → Tanggal transaksi aktif = tanggal baru; Kas → Sesi kas → pilih teller piket Budi Santoso → **Buka sesi** (modal terisi otomatis).
+
+| ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
+| --- | --- | --- | --- | --- |
+| ADB-01 | Buka **Tabungan → Autodebet**. | Daftar kosong: "Belum ada autodebet." Ada tombol **Tambah autodebet**. | | |
+| ADB-02 | Buka buku tabungan R1, lalu R2. | R1 (Tabungan Pelajar) **tidak** punya kotak autodebet. R2 menampilkan "Rekening ini belum punya autodebet dari Tabungan Pelajar." dengan tombol **Buat autodebet**. | | |
+| ADB-03 | Di Autodebet klik **Tambah autodebet**, ketik `Budi` di Rekening tujuan. | Hanya R2 (29999999901, Tabungan Pendidikan) yang muncul; R1 (Tabungan Pelajar) dan R3 (ditutup) tidak. Tutup dialog. | | |
+| ADB-04 | Dari buku tabungan R2 klik **Buat autodebet**. Isi nominal `20.000`, target `10.000`, lalu simpan. | Form terbuka dengan rekening tujuan R2 sudah terisi. Ditolak: "Target minimal sama dengan nominal autodebet." | | |
+| ADB-05 | Ubah: Mingguan, Setiap hari **H**, Mulai **T+2**, Target `50.000`, Keterangan `Study tour`. Klik **Buat autodebet**. | "Autodebet Rp 20.000 tiap H dibuat. Jatuh tempo pertama <T+2>." Halaman detail: Tiap H (mingguan), target Rp 0 / Rp 50.000 (0%), dari R1 ke R2, riwayat "Belum pernah diproses." | | |
+| ADB-06 | Coba buat autodebet lagi untuk R2. | "Rekening 29999999901 sudah punya autodebet." | | |
+| ADB-07 | **Pindah tanggal ke T+2** (lihat cara di atas). | Pesan buka sesi diakhiri "Autodebet: 1 berhasil (Rp 20.000)." | | |
+| ADB-08 | Buka R1, R2, dan detail autodebet. | R1 Rp 255.000 dengan baris **Autodebet keluar** Rp 20.000 "Autodebet ke 29999999901". R2 Rp 70.000 dengan baris **Autodebet masuk**. Detail: terkumpul Rp 20.000 / Rp 50.000 (40%), riwayat 1 baris **Berhasil**, jatuh tempo berikutnya T+9. | | |
+| ADB-09 | **Bukan uang fisik:** buka Kas → Sesi kas dan Laporan kas harian tanggal T+2. Lalu login `bendahara`, buka buku tabungan R2 dan klik **Koreksi** pada baris Autodebet masuk. | Pemasukan/pengeluaran sesi kas tetap Rp 0 dan autodebet tidak muncul di rincian laporan kas harian. Koreksi ditolak: "Transaksi autodebet tidak bisa dikoreksi per baris." | | |
+| ADB-10 | **Jadwal terlewat & target:** pindah tanggal ke **T+16** (melewati T+9). | Pesan "Autodebet: 2 berhasil (Rp 30.000), 1 mencapai target." Detail: status **Target tercapai**, terkumpul Rp 50.000 / Rp 50.000 (100%), riwayat jadwal T+2, T+9, T+16 dengan nominal 20.000, 20.000, 10.000 (debet terakhir sebesar sisa). R1 Rp 225.000, R2 Rp 100.000. Tombol Ubah/Hentikan tidak tampil. | | |
+| ADB-11 | **Saldo kurang:** buat autodebet baru untuk R2: nominal `1.000.000`, Mingguan, hari **H**, Mulai **T+23**, tanpa target. Lalu pindah tanggal ke **T+23**. | Autodebet baru bisa dibuat (yang lama sudah selesai). Pesan buka sesi "Autodebet: 0 berhasil (Rp 0), 1 gagal." Riwayat: **Gagal** "Saldo tidak cukup. Saldo Rp 225.000, penarikan Rp 1.000.000." Saldo R1 dan R2 tidak berubah; jatuh tempo maju ke T+30. | | |
+| ADB-12 | Klik **Hentikan** → konfirmasi. Pindah tanggal ke **T+30**. Lalu klik **Lanjutkan**. | Status **Dihentikan**; buka sesi T+30 tidak memproses autodebet (tidak ada riwayat T+30). Setelah dilanjutkan: "Autodebet dilanjutkan. Jatuh tempo berikutnya <T+37>." | | |
+| ADB-13 | Klik **Ubah**: nominal `25.000`, Bulanan, Setiap tanggal `5`, target `200.000`. Simpan. | "Autodebet diperbarui." Jadwal menjadi "Tiap tanggal 5", jatuh tempo berikutnya tanggal 5 terdekat setelah T+30. | | |
+| ADB-14 | Buka **Cetak buku** R1 dan R2 (pilihan Belum dicetak). | Baris autodebet bersandi **06** di R1 (debit) dan **07** di R2 (kredit). Jangan tandai sudah dicetak. | | |
+| ADB-15 | Filter daftar Autodebet dengan status **Selesai**, lalu **Aktif**. | Selesai: autodebet R2 pertama. Aktif: autodebet R2 kedua (25.000 bulanan). | | |
+| ADB-16 | Login `admin1`. | Menu Autodebet tidak tampil; alamat `/autodebet` → 403. | | |
+
+---
+
+## 22. Log aktivitas
 
 Login sebagai `bendahara`. Menu **Sistem → Log aktivitas**.
 
@@ -562,11 +592,11 @@ Login sebagai `bendahara`. Menu **Sistem → Log aktivitas**.
 
 ---
 
-## 22. Hak akses per peran
+## 23. Hak akses per peran
 
 Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesuai tabel.
 
-### 22.1 Menu yang tampil
+### 23.1 Menu yang tampil
 
 | Menu | teller | admin1 | bendahara |
 | --- | --- | --- | --- |
@@ -576,6 +606,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | Data Master → Jenis Rekening | **tidak** | tampil | tampil |
 | Tabungan → Setor / Tarik | tampil | **tidak** | tampil |
 | Tabungan → Rekening | tampil | **tidak** | tampil |
+| Tabungan → Autodebet | tampil | **tidak** | tampil |
 | Kas → Sesi kas | tampil | **tidak** | tampil |
 | Kas → Penerimaan kas / Pengeluaran kas | tampil | **tidak** | tampil |
 | Keuangan → Pinjaman | **tidak** | **tidak** | tampil |
@@ -588,11 +619,11 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
-| HAK-01 | Login `teller`, cocokkan menu dengan tabel 22.1. | Sesuai kolom teller. | | |
+| HAK-01 | Login `teller`, cocokkan menu dengan tabel 23.1. | Sesuai kolom teller. | | |
 | HAK-02 | Login `admin1` (`Rahasia123`), cocokkan menu. | Sesuai kolom admin1. | | |
 | HAK-03 | Login `bendahara`, cocokkan menu. Buka **Pinjaman**. | Sesuai kolom bendahara. Pinjaman menampilkan halaman segera hadir. | | |
 | HAK-04 | Sebagai `teller`, ketik langsung di alamat browser: `/jurnal`, `/akun`, `/pengguna`, `/log-aktivitas`, `/jenis-rekening`, `/pinjaman`. | Setiap alamat menampilkan halaman **403 / tidak punya akses**, bukan isi halaman. | | |
-| HAK-05 | Sebagai `admin1`, ketik `/rekening`, `/nasabah`, `/transaksi`, `/kas/penerimaan`, `/kas/sesi`, `/laporan`, `/laporan/harian`. | Semua 403. Tanda sesi kas tidak tampil di bagian atas. |  | | |
+| HAK-05 | Sebagai `admin1`, ketik `/rekening`, `/nasabah`, `/transaksi`, `/kas/penerimaan`, `/kas/sesi`, `/laporan`, `/laporan/harian`, `/autodebet`. | Semua 403. Tanda sesi kas tidak tampil di bagian atas. | | |
 | HAK-06 | Sebagai `teller`, buka Pengaturan. | Kartu **Operasional harian** bisa diubah. Kartu **Keuangan** dan **Umum** bertanda **Hanya lihat**, isian abu-abu, tanpa tombol Simpan. | | |
 | HAK-07 | Sebagai `admin1`, buka Pengaturan. | Kartu **Umum** bisa diubah; **Operasional harian** dan **Keuangan** hanya lihat. | | |
 | HAK-08 | Sebagai `admin1`, buka Jenis Rekening dan Pengguna. Tambah, ubah, reset kata sandi tersedia. | Bisa dipakai seperti bendahara. | | |
@@ -601,9 +632,9 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 ---
 
-## 23. Uji umum & ketahanan
+## 24. Uji umum & ketahanan
 
-> **Perhatian:** skenario UMM-05 dan UMM-06 menambah transaksi, sehingga angka di bagian 18, 19, dan 20 tidak berlaku lagi setelahnya. Keduanya dikerjakan pada tanggal T+1 dengan sesi kas yang dibuka di TSK-10.
+> **Perhatian:** skenario UMM-05 dan UMM-06 menambah transaksi, sehingga angka di bagian 18, 19, dan 20 tidak berlaku lagi setelahnya. Keduanya dikerjakan pada tanggal terakhir bagian 21 (sesi kas dari ADB-12 masih terbuka); saat itu saldo R1 Rp 225.000 dan R2 Rp 100.000.
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
@@ -612,13 +643,13 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | UMM-03 | **Tampilan HP:** buka aplikasi di HP (atau perkecil jendela browser selebar HP). Coba Dashboard, Setor / Tarik, daftar Nasabah, buku tabungan, Laporan. | Menu bisa dibuka lewat tombol menu, tidak ada teks terpotong, tabel bisa digeser, tombol bisa ditekan. | | |
 | UMM-04 | **Mode gelap** di semua halaman di atas. | Tulisan terbaca, tidak ada teks putih di atas putih atau hitam di atas hitam. | | |
 | UMM-05 | **Klik ganda:** setor R1 `1.000`, lalu klik tombol konfirmasi dua kali dengan cepat. | Hanya **satu** setoran Rp 1.000 tercatat di buku tabungan R1. | | |
-| UMM-06 | **Dua teller bersamaan:** `teller` (browser 1) dan `teller2` (browser 2) menyiapkan penarikan R2 (saldo Rp 50.000) masing-masing `40.000` sampai dialog konfirmasi, lalu konfirmasi hampir bersamaan. | Hanya **satu** penarikan berhasil. Yang lain: "Saldo tidak cukup. Saldo Rp 10.000, penarikan Rp 40.000." Saldo R2 tidak pernah minus. | | |
+| UMM-06 | **Dua teller bersamaan:** `teller` (browser 1) dan `teller2` (browser 2) menyiapkan penarikan R2 (saldo Rp 100.000) masing-masing `60.000` sampai dialog konfirmasi, lalu konfirmasi hampir bersamaan. | Hanya **satu** penarikan berhasil. Yang lain: "Saldo tidak cukup. Saldo Rp 40.000, penarikan Rp 60.000." Saldo R2 tidak pernah minus. | | |
 | UMM-07 | **Nominal besar & desimal:** setor R1 `1.500,50`. | Diterima, saldo dan terbilang menampilkan desimal dengan benar (koma), atau isian tidak mengizinkan desimal; catat perilakunya. | | |
 | UMM-08 | Muat ulang (F5) di tengah halaman mana pun. | Halaman tampil kembali normal, tetap login. | | |
 
 ---
 
-## 24. Ringkasan hasil
+## 25. Ringkasan hasil
 
 | Bagian | Jumlah skenario | ✅ | ❌ | ⏭️ |
 | --- | --- | --- | --- | --- |
@@ -642,10 +673,11 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 18. Laporan keuangan | 12 | | | |
 | 19. Dashboard | 11 | | | |
 | 20. Tutup sesi kas & laporan kas harian | 10 | | | |
-| 21. Log aktivitas | 8 | | | |
-| 22. Hak akses | 10 | | | |
-| 23. Uji umum & ketahanan | 8 | | | |
-| **Total** | **246** | | | |
+| 21. Autodebet | 16 | | | |
+| 22. Log aktivitas | 8 | | | |
+| 23. Hak akses | 10 | | | |
+| 24. Uji umum & ketahanan | 8 | | | |
+| **Total** | **262** | | | |
 
 **Daftar bug ditemukan**
 

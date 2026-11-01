@@ -3,6 +3,7 @@
 namespace App\Http\Modules\Rekening\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Modules\Autodebet\Models\Autodebet;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Http\Modules\Rekening\Models\JenisRekening;
@@ -51,7 +52,7 @@ class RekeningController extends Controller
     {
         Gate::authorize('viewAny', Rekening::class);
 
-        return response()->json($this->service->cariAktif($request->string('q')->toString()));
+        return response()->json($this->service->cariAktif($request->string('q')->toString(), nonUtama: $request->boolean('non_utama')));
     }
 
     public function create(Request $request): Response
@@ -91,7 +92,7 @@ class RekeningController extends Controller
     {
         Gate::authorize('view', $rekening);
 
-        $rekening->load(['nasabah:id,nomor,nama,nis,kelas,jenis,is_active', 'jenisRekening:id,kode,nama']);
+        $rekening->load(['nasabah:id,nomor,nama,nis,kelas,jenis,is_active', 'jenisRekening:id,kode,nama,prefix']);
 
         return Inertia::render('Rekening::Show', [
             'rekening' => $rekening,
@@ -103,6 +104,11 @@ class RekeningController extends Controller
                 ]),
             'jenisTransaksi' => Transaksi::JENIS,
             'belumDicetak' => fn () => $this->buku->jumlahBelumDicetak($rekening),
+            // Autodebet hanya untuk rekening selain rekening utama (jenis ber-prefix).
+            'autodebet' => fn () => class_exists(Autodebet::class) && $rekening->jenisRekening?->prefix !== null
+                ? ['ada' => true, 'item' => Autodebet::query()->where('rekening_id', $rekening->id)->latest()->first()
+                    ?->only('id', 'nominal', 'periode', 'hari', 'target', 'terkumpul', 'status')]
+                : ['ada' => false, 'item' => null],
             'penutupan' => $rekening->isAktif() ? [
                 'biaya' => $this->transaksi->biayaPenutupan($rekening->saldo),
                 'diserahkan' => Money::sub($rekening->saldo, $this->transaksi->biayaPenutupan($rekening->saldo)),

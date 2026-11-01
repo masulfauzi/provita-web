@@ -263,8 +263,8 @@ onBeforeUnmount(() => window.removeEventListener('afterprint', sesudahCetak));
                     </Column>
                 </DataTable>
                 <small class="text-muted-color">
-                    Sandi: 01 setoran · 02 penarikan · 03 koreksi · 04 biaya administrasi · 05 tutup rekening. Paraf =
-                    inisial petugas.
+                    Sandi: 01 setoran · 02 penarikan · 03 koreksi · 04 biaya administrasi · 05 tutup rekening · 06
+                    autodebet keluar · 07 autodebet masuk. Paraf = inisial petugas.
                 </small>
             </div>
         </div>

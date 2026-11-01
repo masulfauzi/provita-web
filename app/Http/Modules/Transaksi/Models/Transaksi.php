@@ -49,6 +49,13 @@ class Transaksi extends Model
 
     public const JENIS_KAS_LAIN = [self::KAS_MASUK, self::KAS_KELUAR];
 
+    /** Pindah buku autodebet antarrekening nasabah; tanpa uang fisik. */
+    public const PINDAH_KELUAR = 'pindah_keluar';
+
+    public const PINDAH_MASUK = 'pindah_masuk';
+
+    public const JENIS_PINDAH = [self::PINDAH_KELUAR, self::PINDAH_MASUK];
+
     public const JENIS = [
         self::SETOR => 'Setoran',
         self::TARIK => 'Penarikan',
@@ -57,6 +64,8 @@ class Transaksi extends Model
         self::PENUTUPAN => 'Penutupan',
         self::KAS_MASUK => 'Penerimaan kas',
         self::KAS_KELUAR => 'Pengeluaran kas',
+        self::PINDAH_KELUAR => 'Autodebet keluar',
+        self::PINDAH_MASUK => 'Autodebet masuk',
     ];
 
     protected $table = 'transaksi';
