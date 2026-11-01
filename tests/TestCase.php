@@ -7,6 +7,13 @@ use Illuminate\Support\Facades\Http;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Migration hanya berisi struktur; data wajib (bagan akun, rekening utama) dari seeder.
+     */
+    protected bool $seed = true;
+
+    protected string $seeder = DataWajibSeeder::class;
+
     protected function setUp(): void
     {
         parent::setUp();

@@ -2,36 +2,15 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
+/**
+ * Rekening tabungan nasabah; nomor = prefix jenis + NISN/NIS/NIP.
+ */
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('jenis_rekening', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->string('kode', 20)->unique();
-            $table->string('nama', 100);
-            // Prefix angka nomor rekening; null = rekening utama (hanya satu jenis).
-            $table->string('prefix', 10)->nullable()->unique();
-            $table->boolean('is_active')->default(true);
-            $table->string('keterangan')->nullable();
-            $table->timestamps();
-        });
-
-        // Jenis bawaan sebagai rekening utama.
-        DB::table('jenis_rekening')->insert([
-            'id' => (string) Str::uuid(),
-            'kode' => 'tabungan',
-            'nama' => 'Tabungan',
-            'prefix' => null,
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
         Schema::create('rekening', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('nomor', 30)->unique();
@@ -50,6 +29,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('rekening');
-        Schema::dropIfExists('jenis_rekening');
     }
 };

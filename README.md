@@ -40,7 +40,7 @@ php artisan migrate --seed
 composer run dev          # server Laravel + queue + log + Vite
 ```
 
-Seeder juga membuat jenis rekening bawaan (`RekeningSeeder`, aman dijalankan ulang): **Tabungan Pelajar** (rekening utama, nomor = NISN/NIS), **Tabungan Wisata** (prefix 41), **Tabungan Wisuda** (prefix 42), dan **Tabungan Foto Katalog** (prefix 43). Untuk database yang sudah berjalan: `php artisan db:seed --class="App\Http\Modules\Rekening\Database\Seeders\RekeningSeeder" --force`.
+**Seeder wajib dijalankan**: migration hanya berisi struktur tabel, sedangkan data awal dibuat seeder (aman dijalankan ulang). `AkuntansiSeeder` membuat bagan akun bawaan (akun Kas, Simpanan, Pendapatan administrasi, dll. dipakai jurnal otomatis), `PengaturanSeeder` membuat pengaturan, dan `RekeningSeeder` membuat jenis rekening: **Tabungan Pelajar** (rekening utama, nomor = NISN/NIS), **Tabungan Wisata** (prefix 41), **Tabungan Wisuda** (prefix 42), dan **Tabungan Foto Katalog** (prefix 43). Untuk database yang sudah berjalan: `php artisan db:seed --class="App\Http\Modules\Rekening\Database\Seeders\RekeningSeeder" --force`.
 
 Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller` (atau sesuai `SEED_*_USERNAME`).
 
@@ -134,7 +134,7 @@ Penerimaan & pengeluaran kas tidak punya tabel sendiri: dicatat di tabel `transa
 2. `php artisan migrate --force && php artisan permission:sync-modules --prune`
 3. `php artisan config:cache && php artisan route:cache && php artisan view:cache`
 
-Migration masih tahap pengembangan: satu file per tabel dengan skema akhir. Bila file migration disederhanakan ulang, database lama dibuat ulang dengan `php artisan migrate:fresh --seed --force` (semua data terhapus).
+Migration masih tahap pengembangan: **satu file per tabel**, hanya struktur akhir (tanpa pengubahan data); data awal ada di `{Modul}Seeder`. Bila file migration disederhanakan ulang, database lama dibuat ulang dengan `php artisan migrate:fresh --seed --force` (semua data terhapus).
 
 **Scheduler** (backup harian 01:30, retensi 14 hari, cek jatuh tempo, bunga bulanan), satu baris cron:
 

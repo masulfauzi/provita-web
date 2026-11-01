@@ -19,9 +19,9 @@ function dataJenis(array $data = []): array
     return ['kode' => 'tabungan_berjangka', 'nama' => 'Tabungan Berjangka', 'prefix' => ' 3 ', ...$data];
 }
 
-it('migrasi membuat jenis tabungan bawaan sebagai rekening utama', function () {
+it('seeder data wajib membuat jenis Tabungan Pelajar sebagai rekening utama', function () {
     expect($this->tabungan)
-        ->nama->toBe('Tabungan')
+        ->nama->toBe('Tabungan Pelajar')
         ->prefix->toBeNull()
         ->is_active->toBeTrue();
 });
@@ -58,7 +58,7 @@ it('memvalidasi kode, nama, dan prefix', function () {
     $bendahara = userWithRole('bendahara');
 
     $this->actingAs($bendahara)
-        ->post('/jenis-rekening', ['kode' => 'Bukan Kode!', 'nama' => 'Tabungan', 'prefix' => 'TAB-'])
+        ->post('/jenis-rekening', ['kode' => 'Bukan Kode!', 'nama' => 'Tabungan Pelajar', 'prefix' => 'TAB-'])
         ->assertSessionHasErrors(['kode', 'nama', 'prefix']);
 
     foreach (['1a', '-2', '123456'] as $prefix) {
@@ -75,7 +75,7 @@ it('prefix kosong (rekening utama) hanya boleh satu jenis', function () {
     $bendahara = userWithRole('bendahara');
 
     $this->actingAs($bendahara)->post('/jenis-rekening', dataJenis(['prefix' => '']))
-        ->assertSessionHasErrors(['prefix' => 'Rekening utama (tanpa prefix) sudah ada: Tabungan. Isi prefix angka.']);
+        ->assertSessionHasErrors(['prefix' => 'Rekening utama (tanpa prefix) sudah ada: Tabungan Pelajar. Isi prefix angka.']);
 
     // Tabungan sendiri tetap boleh disimpan tanpa prefix.
     $this->actingAs($bendahara)->put("/jenis-rekening/{$this->tabungan->id}", ['nama' => 'Tabungan', 'prefix' => null])
@@ -98,7 +98,7 @@ it('jenis baru dapat dipilih teller dan nomornya memakai prefix sendiri', functi
     $this->actingAs($teller)->get('/rekening/create')
         ->assertInertia(fn (Assert $page) => $page
             ->has('jenisOptions', 2)
-            ->where('jenisOptions.0.label', 'Tabungan')
+            ->where('jenisOptions.0.label', 'Tabungan Pelajar')
             ->where('jenisOptions.1.label', 'Tabungan Berjangka'));
 
     $this->actingAs($teller)->post('/rekening', [

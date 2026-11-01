@@ -25,8 +25,8 @@ app/Http/Modules/Nasabah/
 ├── Services/NasabahService.php           # logika bisnis
 ├── Policies/NasabahPolicy.php            # ditemukan otomatis dari nama model
 ├── Console/*.php                         # (opsional) artisan command, didaftarkan otomatis
-├── Database/Migrations/
-├── Database/Seeders/NasabahSeeder.php    # dipanggil otomatis oleh DatabaseSeeder
+├── Database/Migrations/                 # satu file per tabel, hanya struktur
+├── Database/Seeders/NasabahSeeder.php    # data awal modul; dipanggil otomatis oleh DatabaseSeeder
 ├── Database/Factories/
 ├── Pages/Index.vue, Create.vue, ...      # Inertia::render('Nasabah::Index')
 ├── Components/                           # komponen Vue khusus modul

@@ -67,7 +67,7 @@ it('jenis rekening default tabungan', function () {
             ->component('Rekening::Create')
             ->where('nasabah.id', $this->nasabah->id)
             ->where('jenisOptions.0.value', JenisRekening::kode('tabungan')->id)
-            ->where('jenisOptions.0.label', 'Tabungan')
+            ->where('jenisOptions.0.label', 'Tabungan Pelajar')
             ->where('setoranAwalMinimal', '10000.00'));
 });
 

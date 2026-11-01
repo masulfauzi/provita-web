@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Jurnal dan baris jurnal pembukuan double-entry.
+ * Jurnal pembukuan double-entry (header); barisnya di jurnal_detail.
  */
 return new class extends Migration
 {
@@ -24,22 +24,10 @@ return new class extends Migration
             $table->foreignUuid('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
-
-        Schema::create('jurnal_detail', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('jurnal_id')->constrained('jurnal')->cascadeOnDelete();
-            $table->foreignUuid('akun_id')->constrained('akun')->restrictOnDelete();
-            $table->decimal('debit', 15, 2)->default(0);
-            $table->decimal('kredit', 15, 2)->default(0);
-            $table->string('keterangan')->nullable();
-            $table->unsignedSmallInteger('urut')->default(0);
-            $table->timestamps();
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('jurnal_detail');
         Schema::dropIfExists('jurnal');
     }
 };
