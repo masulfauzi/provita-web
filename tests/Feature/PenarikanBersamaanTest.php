@@ -28,6 +28,8 @@ it('dua penarikan bersamaan pada satu rekening tidak membuat saldo negatif', fun
     $script = base_path('tests/Support/penarikan.php');
 
     Process::env($env)->path(base_path())->timeout(120)->run([$php, 'artisan', 'migrate:fresh', '--force'])->throw();
+    // Migration hanya struktur; jenis rekening utama & akun bawaan dari seeder data wajib.
+    Process::env($env)->path(base_path())->run([$php, 'artisan', 'db:seed', '--class=Tests\\DataWajibSeeder', '--force'])->throw();
     $rekeningId = trim(Process::env($env)->run([$php, $script, 'setup', '100000'])->throw()->output());
 
     $results = Process::pool(fn (Pool $pool) => [
