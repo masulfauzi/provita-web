@@ -40,6 +40,8 @@ php artisan migrate --seed
 composer run dev          # server Laravel + queue + log + Vite
 ```
 
+Seeder juga membuat jenis rekening bawaan (`RekeningSeeder`, aman dijalankan ulang): **Tabungan Pelajar** (rekening utama, nomor = NISN/NIS), **Tabungan Wisata** (prefix 41), **Tabungan Wisuda** (prefix 42), dan **Tabungan Foto Katalog** (prefix 43). Untuk database yang sudah berjalan: `php artisan db:seed --class="App\Http\Modules\Rekening\Database\Seeders\RekeningSeeder" --force`.
+
 Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller` (atau sesuai `SEED_*_USERNAME`).
 
 ## Peran

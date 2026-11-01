@@ -73,11 +73,11 @@ Semua transaksi dilakukan pada **satu tanggal transaksi**, yaitu tanggal hari pe
 
 | Kode | Nomor rekening | Pemilik | Jenis | Setoran awal | Saldo akhir | Status akhir |
 | --- | --- | --- | --- | --- | --- | --- |
-| R1 | `9999999901` | Budi | Tabungan | Rp 100.000 | **Rp 275.000** | Aktif |
+| R1 | `9999999901` | Budi | Tabungan Pelajar | Rp 100.000 | **Rp 275.000** | Aktif |
 | R2 | `29999999901` | Budi | Tabungan Pendidikan | Rp 50.000 | **Rp 50.000** | Aktif |
-| R3 | `99999999011` | Budi | Tabungan | Rp 20.000 | Rp 0 | Ditutup |
-| R4 | `9999999902` | Citra | Tabungan | Rp 30.000 | Rp 0 | Ditutup |
-| R5 | `198001012005011001` | Dedi | Tabungan | Rp 200.000 | **Rp 50.000** | Aktif |
+| R3 | `99999999011` | Budi | Tabungan Pelajar | Rp 20.000 | Rp 0 | Ditutup |
+| R4 | `9999999902` | Citra | Tabungan Pelajar | Rp 30.000 | Rp 0 | Ditutup |
+| R5 | `198001012005011001` | Dedi | Tabungan Pelajar | Rp 200.000 | **Rp 50.000** | Aktif |
 
 **Pengaturan yang dipakai**
 
@@ -182,11 +182,11 @@ Login sebagai `bendahara`. Menu **Data Master → Jenis Rekening**.
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
-| JRK-01 | Buka halaman Jenis Rekening. | Ada jenis bawaan **Tabungan**, kode `tabungan`, prefix kosong dengan tanda **Rekening utama**, status aktif. | | |
+| JRK-01 | Buka halaman Jenis Rekening. | Ada 4 jenis bawaan, semuanya aktif: **Tabungan Pelajar** (kode `tabungan`, prefix kosong dengan tanda **Rekening utama**), **Tabungan Wisata** (`wisata`, prefix 41), **Tabungan Wisuda** (`wisuda`, prefix 42), dan **Tabungan Foto Katalog** (`foto_katalog`, prefix 43). | | |
 | JRK-02 | Klik **Tambah jenis**. Isi Nama jenis `Tabungan Pendidikan`, Kode `tabungan_pendidikan`, Prefix `2`, Keterangan `Tabungan biaya sekolah`. Simpan. | "Jenis rekening Tabungan Pendidikan ditambahkan." Kolom Contoh nomor diawali angka 2. | | |
 | JRK-03 | Validasi kode: tambah jenis dengan Kode `Tabungan Qurban` (huruf besar dan spasi). | "Kode hanya boleh huruf kecil, angka, dan garis bawah, diawali huruf." | | |
 | JRK-04 | Validasi prefix: coba Prefix `A1`, lalu Prefix `123456`. | Keduanya ditolak: "Prefix hanya boleh angka (1–5 digit), mis. 2." | | |
-| JRK-05 | Tambah jenis `Tabungan Qurban`, kode `tabungan_qurban`, **prefix dikosongkan**. | "Rekening utama (tanpa prefix) sudah ada: Tabungan. Isi prefix angka." | | |
+| JRK-05 | Tambah jenis `Tabungan Qurban`, kode `tabungan_qurban`, **prefix dikosongkan**. | "Rekening utama (tanpa prefix) sudah ada: Tabungan Pelajar. Isi prefix angka." | | |
 | JRK-06 | Duplikat: tambah jenis dengan nama `Tabungan Pendidikan`, lalu dengan kode `tabungan_pendidikan`, lalu dengan prefix `2`. | Ketiganya ditolak dengan pesan "sudah digunakan" pada kolom yang sama. | | |
 | JRK-07 | Tambah jenis `Tabungan Qurban`, kode `tabungan_qurban`, prefix `3`. | "Jenis rekening Tabungan Qurban ditambahkan." | | |
 | JRK-08 | Klik ubah pada `Tabungan Qurban`. Ubah keterangan menjadi `Untuk qurban Iduladha`, simpan. | Kolom Kode tidak bisa diubah (abu-abu). Perubahan tersimpan: "…diperbarui." | | |
@@ -247,7 +247,7 @@ Login sebagai `teller`. Menu **Kas → Sesi kas**. Sesi kas harus dibuka sebelum
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
 | SES-01 | Buka Sesi kas. | Tanggal T dengan tanda **Belum dibuka**, isian **Teller piket** dan **Modal awal**, tombol **Buka sesi**. Riwayat sesi: "Belum ada sesi kas." Di bagian atas tampil tanda **Sesi kas belum dibuka**. | | |
-| SES-02 | **Transaksi tanpa sesi:** buka detail Budi → **Buka rekening**, jenis Tabungan, setoran awal `100.000`, simpan. Lalu buka **Kas → Penerimaan kas**, kategori Pendapatan penjualan buku tabungan, simpan. Ulangi buka rekening Budi sebagai `bendahara`. | Ketiganya ditolak (bendahara juga): "Sesi kas tanggal <T> belum dibuka. Buka sesi kas terlebih dahulu." Rekening tidak dibuat; penerimaan kas tidak tercatat. | | |
+| SES-02 | **Transaksi tanpa sesi:** buka detail Budi → **Buka rekening**, jenis Tabungan Pelajar, setoran awal `100.000`, simpan. Lalu buka **Kas → Penerimaan kas**, kategori Pendapatan penjualan buku tabungan, simpan. Ulangi buka rekening Budi sebagai `bendahara`. | Ketiganya ditolak (bendahara juga): "Sesi kas tanggal <T> belum dibuka. Buka sesi kas terlebih dahulu." Rekening tidak dibuat; penerimaan kas tidak tercatat. | | |
 | SES-02a | **Validasi teller piket:** isi Modal awal `1.000.000` tanpa memilih teller piket. Lalu ketik `Dedi` di kolom Teller piket. | Tombol **Buka sesi** tidak aktif selama teller piket kosong. Dedi Pratama (guru) **tidak** muncul di pilihan; hanya siswa aktif yang bisa dipilih. | | |
 | SES-03 | Pilih teller piket **Budi Santoso** dan **Citra Lestari** (ketik nama, pilih dari daftar). Modal awal `1.000.000`, klik **Buka sesi**. Catat jamnya. | "Sesi kas <T> dibuka dengan modal awal Rp 1.000.000. Teller piket: Budi Santoso, Citra Lestari (hadir pukul HH.MM)." Jam sama dengan jam saat tombol diklik. Kartu sesi menampilkan kedua siswa beserta kelas dan "hadir HH.MM". Tanda berubah **Terbuka**. Ringkasan: Modal awal Rp 1.000.000, Pemasukan Rp 0, Pengeluaran Rp 0, **Saldo kas seharusnya Rp 1.000.000**. Bagian atas: **Sesi kas terbuka**. | | |
 | SES-04 | Periksa Riwayat sesi. | Satu baris tanggal T, modal Rp 1.000.000, selisih bertanda **Terbuka**, kolom Teller piket "Budi Santoso, Citra Lestari" (buka: Teller). | | |
@@ -263,21 +263,21 @@ Login sebagai `teller`. Menu **Tabungan → Rekening** (atau tombol **Buka reken
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
 | REK-01 | Buka detail nasabah Budi → klik **Buka rekening**. | Form Buka rekening tampil dengan Budi sudah terpilih. Setoran awal terisi Rp 10.000 dengan petunjuk "Minimal Rp 10.000 · sepuluh ribu rupiah". | | |
-| REK-02 | Buka daftar pilihan **Jenis rekening**. | Ada **Tabungan** (paling atas) dan **Tabungan Pendidikan**. Tabungan Qurban yang sudah dihapus tidak ada. | | |
-| REK-03 | Pilih Tabungan, isi Setoran awal `5.000`, simpan. | "Setoran awal minimal Rp 10.000." Rekening tidak dibuat. | | |
-| REK-04 | **R1:** Budi, Tabungan, Setoran awal `100.000`. Simpan. | "Rekening 9999999901 dibuka dengan setoran awal Rp 100.000." Halaman buku tabungan tampil, saldo Rp 100.000. | | |
+| REK-02 | Buka daftar pilihan **Jenis rekening**. | Ada **Tabungan Pelajar** (paling atas), **Tabungan Pendidikan**, **Tabungan Wisata**, **Tabungan Wisuda**, dan **Tabungan Foto Katalog**. Tabungan Qurban yang sudah dihapus tidak ada. | | |
+| REK-03 | Pilih Tabungan Pelajar, isi Setoran awal `5.000`, simpan. | "Setoran awal minimal Rp 10.000." Rekening tidak dibuat. | | |
+| REK-04 | **R1:** Budi, Tabungan Pelajar, Setoran awal `100.000`. Simpan. | "Rekening 9999999901 dibuka dengan setoran awal Rp 100.000." Halaman buku tabungan tampil, saldo Rp 100.000. | | |
 | REK-05 | Periksa tabel mutasi R1. | Satu baris: tanggal T, jenis setor, keterangan "Setoran awal", Kredit Rp 100.000, Saldo Rp 100.000, Petugas Teller. | | |
 | REK-06 | **R2 (ber-prefix):** buka rekening Budi, jenis **Tabungan Pendidikan**, setoran awal `50.000`. | "Rekening 29999999901 dibuka dengan setoran awal Rp 50.000." | | |
-| REK-07 | **R3 (nomor bentrok):** buka rekening Budi lagi, jenis **Tabungan**, setoran awal `20.000`. | "Rekening 99999999011 dibuka…" (nomor NISN + akhiran 1 karena 9999999901 sudah dipakai). | | |
-| REK-08 | **R4:** Citra, Tabungan, setoran awal `30.000`. | "Rekening 9999999902 dibuka dengan setoran awal Rp 30.000." | | |
-| REK-09 | **R5 (guru):** Dedi, Tabungan, setoran awal `200.000`. | "Rekening 198001012005011001 dibuka…" (nomor dari NIP). | | |
-| REK-10 | **Tanpa NIP:** Eko, Tabungan, setoran awal `10.000`. | "Lengkapi NIP / No. pegawai Eko Saputra terlebih dahulu; nomor rekening dibuat dari NIP." Rekening tidak dibuat. | | |
+| REK-07 | **R3 (nomor bentrok):** buka rekening Budi lagi, jenis **Tabungan Pelajar**, setoran awal `20.000`. | "Rekening 99999999011 dibuka…" (nomor NISN + akhiran 1 karena 9999999901 sudah dipakai). | | |
+| REK-08 | **R4:** Citra, Tabungan Pelajar, setoran awal `30.000`. | "Rekening 9999999902 dibuka dengan setoran awal Rp 30.000." | | |
+| REK-09 | **R5 (guru):** Dedi, Tabungan Pelajar, setoran awal `200.000`. | "Rekening 198001012005011001 dibuka…" (nomor dari NIP). | | |
+| REK-10 | **Tanpa NIP:** Eko, Tabungan Pelajar, setoran awal `10.000`. | "Lengkapi NIP / No. pegawai Eko Saputra terlebih dahulu; nomor rekening dibuat dari NIP." Rekening tidak dibuat. | | |
 | REK-11 | **Nasabah nonaktif:** di form Buka rekening, ketik `Fajar` di kolom nasabah. | Fajar tidak muncul di pilihan. | | |
 | REK-12 | Ketik di alamat browser `/rekening/create?nasabah=` diikuti ID Fajar (salin dari alamat halaman detail Fajar). | Muncul peringatan "Nasabah Fajar Nugroho tidak aktif sehingga tidak dapat dibukakan rekening." | | |
 | REK-13 | Daftar rekening: cari `Budi`, lalu filter jenis **Tabungan Pendidikan**. | Pencarian: 3 rekening Budi (R1, R2, R3). Filter: hanya R2. | | |
 | REK-14 | Buka halaman detail Budi. | Tabel rekening berisi R1, R2, R3 dengan saldo Rp 100.000, Rp 50.000, Rp 20.000. | | |
 | REK-15 | Login `bendahara`. Buka detail Budi → **Hapus**. | Ditolak: "Nasabah sudah memiliki rekening sehingga tidak bisa dihapus. Gunakan Nonaktifkan." | | |
-| REK-16 | Sebagai bendahara, buka **Jenis Rekening**. | **Tabungan** dan **Tabungan Pendidikan** tidak punya tombol Hapus (sudah dipakai rekening). Jumlah rekening: Tabungan 4, Tabungan Pendidikan 1. | | |
+| REK-16 | Sebagai bendahara, buka **Jenis Rekening**. | **Tabungan Pelajar** dan **Tabungan Pendidikan** tidak punya tombol Hapus (sudah dipakai rekening). Jumlah rekening: Tabungan Pelajar 4, Tabungan Pendidikan 1; Wisata, Wisuda, dan Foto Katalog 0 (tombol Hapus tampil). | | |
 | REK-17 | Sebagai bendahara, buka Fajar → **Hapus** dan konfirmasi. | "Nasabah berhasil dihapus." Fajar hilang dari daftar. | | |
 
 ---

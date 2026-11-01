@@ -2,8 +2,10 @@
 
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Database\Seeders\PengaturanSeeder;
+use App\Http\Modules\Rekening\Database\Seeders\RekeningSeeder;
 use App\Http\Modules\Rekening\Models\JenisRekening;
 use App\Http\Modules\Rekening\Models\Rekening;
+use App\Http\Modules\Rekening\Services\RekeningService;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -173,3 +175,19 @@ it('menu jenis rekening hanya untuk bendahara dan admin', function (string $role
     ['admin', true],
     ['teller', false],
 ]);
+
+it('seeder membuat jenis tabungan bawaan dan aman dijalankan ulang', function () {
+    $this->seed(RekeningSeeder::class);
+    $this->seed(RekeningSeeder::class);
+
+    expect(JenisRekening::query()->orderBy('nama')->get()->map->only('kode', 'nama', 'prefix')->all())->toBe([
+        ['kode' => 'foto_katalog', 'nama' => 'Tabungan Foto Katalog', 'prefix' => '43'],
+        ['kode' => 'tabungan', 'nama' => 'Tabungan Pelajar', 'prefix' => null],
+        ['kode' => 'wisata', 'nama' => 'Tabungan Wisata', 'prefix' => '41'],
+        ['kode' => 'wisuda', 'nama' => 'Tabungan Wisuda', 'prefix' => '42'],
+    ])->and($this->tabungan->refresh()->id)->toBe(JenisRekening::kode('tabungan')->id);
+
+    $rekening = app(RekeningService::class)->buka(Nasabah::factory()->create(['nisn' => '0012345678']), JenisRekening::kode('wisata'), 10000);
+
+    expect($rekening->nomor)->toBe('410012345678');
+});
