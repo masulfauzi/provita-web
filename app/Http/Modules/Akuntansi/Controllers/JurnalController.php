@@ -8,6 +8,7 @@ use App\Http\Modules\Akuntansi\Requests\SimpanJurnalRequest;
 use App\Http\Modules\Akuntansi\Services\AkunService;
 use App\Http\Modules\Akuntansi\Services\JurnalService;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
+use App\Http\Modules\Pinjaman\Models\Pinjaman;
 use App\Http\Modules\Transaksi\Models\Transaksi;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -68,13 +69,15 @@ class JurnalController extends Controller
             'transaksi:id,rekening_id,jenis,pembalik_dari_id',
         ]);
 
-        // Bukti kas asal bila jurnal ini berasal dari penerimaan/pengeluaran kas (atau pembatalannya).
+        // Bukti kas asal bila jurnal ini berasal dari penerimaan/pengeluaran kas (atau pembatalannya),
+        // atau pinjaman asal bila dari pencairan/angsuran pinjaman.
         $transaksi = $jurnal->transaksi;
-        $kas = $transaksi?->isKasLain()
+        $pinjaman = $transaksi?->isPinjaman() ? Pinjaman::dariTransaksi($transaksi)?->only('id', 'nomor') : null;
+        $kas = $transaksi?->isKasLain() && ! $pinjaman
             ? Transaksi::query()->find($transaksi->pembalik_dari_id ?? $transaksi->id, ['id', 'nomor'])
             : null;
 
-        return Inertia::render('Akuntansi::Jurnal/Show', ['jurnal' => $jurnal, 'kas' => $kas]);
+        return Inertia::render('Akuntansi::Jurnal/Show', ['jurnal' => $jurnal, 'kas' => $kas, 'pinjaman' => $pinjaman]);
     }
 
     public function balik(Request $request, Jurnal $jurnal): RedirectResponse

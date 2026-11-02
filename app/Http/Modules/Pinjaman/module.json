@@ -4,11 +4,12 @@
     "icon": "pi pi-money-bill",
     "order": 300,
     "menu": [
-        { "label": "Pinjaman", "route": "pinjaman.index", "permission": "pinjaman.lihat", "group": "Keuangan" }
+        { "label": "Pinjaman", "route": "pinjaman.index", "icon": "pi pi-briefcase", "permission": "pinjaman.lihat", "group": "Keuangan" }
     ],
     "permissions": {
-        "pinjaman.lihat": { "label": "Lihat pinjaman", "roles": [] },
-        "pinjaman.akad": { "label": "Membuat akad pinjaman", "roles": [] },
-        "pinjaman.angsuran": { "label": "Menerima angsuran pinjaman", "roles": [] }
+        "pinjaman.lihat": { "label": "Lihat pinjaman", "roles": ["teller"] },
+        "pinjaman.akad": { "label": "Membuat akad & mencairkan pinjaman", "roles": ["teller"] },
+        "pinjaman.angsuran": { "label": "Menerima angsuran pinjaman", "roles": ["teller"] },
+        "pinjaman.batal": { "label": "Membatalkan pinjaman / pembayaran angsuran", "roles": ["teller"] }
     }
 }

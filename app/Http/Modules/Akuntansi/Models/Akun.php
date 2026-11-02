@@ -44,6 +44,10 @@ class Akun extends Model
 
     public const PENDAPATAN_ADMINISTRASI = 'pendapatan_administrasi';
 
+    public const PIUTANG_PINJAMAN = 'piutang_pinjaman';
+
+    public const PENDAPATAN_JASA_PINJAMAN = 'pendapatan_jasa_pinjaman';
+
     protected $table = 'akun';
 
     protected $fillable = [

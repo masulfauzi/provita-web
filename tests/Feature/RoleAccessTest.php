@@ -3,13 +3,12 @@
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
-| Hak akses per peran. Teller tidak boleh membuka modul pinjaman, jurnal &
-| bagan akun, pengguna, maupun log aktivitas walaupun URL diketik langsung.
-| Laporan keuangan boleh dilihat teller.
+| Hak akses per peran. Teller tidak boleh membuka jurnal & bagan akun,
+| pengguna, maupun log aktivitas walaupun URL diketik langsung.
+| Laporan keuangan dan pinjaman boleh dibuka teller.
 */
 
 dataset('route khusus bendahara', [
-    'pinjaman' => '/pinjaman',
     'jurnal umum' => '/jurnal',
     'bagan akun' => '/akun',
     'pengguna' => '/pengguna',
@@ -31,6 +30,7 @@ it('teller dapat membuka dashboard dan pengaturan', function () {
     $this->actingAs($teller)->get('/pengaturan')->assertOk();
     $this->actingAs($teller)->get('/laporan')->assertOk();
     $this->actingAs($teller)->get('/laporan/neraca')->assertOk();
+    $this->actingAs($teller)->get('/pinjaman')->assertOk();
 });
 
 it('admin dapat mengelola pengguna tetapi tidak membuka laporan keuangan', function () {
@@ -47,8 +47,7 @@ it('menu sidebar disesuaikan dengan peran', function () {
 
     $this->actingAs(userWithRole('teller'))->get('/dashboard')
         ->assertInertia(function (Assert $page) use ($menuLabels) {
-            expect($menuLabels($page))->toContain('Pengaturan', 'Laporan keuangan')
-                ->not->toContain('Pinjaman')
+            expect($menuLabels($page))->toContain('Pengaturan', 'Laporan keuangan', 'Pinjaman')
                 ->not->toContain('Jurnal umum')
                 ->not->toContain('Pengguna');
         });

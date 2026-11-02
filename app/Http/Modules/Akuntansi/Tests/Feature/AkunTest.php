@@ -61,7 +61,7 @@ it('akun sistem dan akun terpakai terlindungi', function () {
 });
 
 it('akun yang belum dipakai dapat dihapus', function () {
-    $akun = Akun::where('kode', '4-102')->firstOrFail();
+    $akun = Akun::where('kode', '5-101')->firstOrFail();
 
     $this->actingAs($this->bendahara)->delete("/akun/{$akun->id}")->assertSessionHas('success');
 

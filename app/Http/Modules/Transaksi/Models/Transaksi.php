@@ -19,7 +19,8 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Mutasi kas: mutasi rekening tabungan, atau penerimaan/pengeluaran kas lain
- * (rekening kosong, akun lawan di akun_id; saldo_sesudah = saldo kas).
+ * (rekening kosong, akun lawan di akun_id; saldo_sesudah = saldo kas), termasuk
+ * pencairan & angsuran pinjaman.
  * Tidak boleh di-update/di-delete (lihat Immutable); koreksi lewat
  * TransaksiService::balik() atau pembatalan di modul Kas.
  *
@@ -56,6 +57,14 @@ class Transaksi extends Model
 
     public const JENIS_PINDAH = [self::PINDAH_KELUAR, self::PINDAH_MASUK];
 
+    /** Pencairan pinjaman tunai (uang keluar dari kas); tanpa rekening. */
+    public const PINJAMAN_CAIR = 'pinjaman_cair';
+
+    /** Pembayaran angsuran pinjaman tunai (uang masuk ke kas); tanpa rekening. */
+    public const ANGSURAN = 'angsuran';
+
+    public const JENIS_PINJAMAN = [self::PINJAMAN_CAIR, self::ANGSURAN];
+
     public const JENIS = [
         self::SETOR => 'Setoran',
         self::TARIK => 'Penarikan',
@@ -66,6 +75,8 @@ class Transaksi extends Model
         self::KAS_KELUAR => 'Pengeluaran kas',
         self::PINDAH_KELUAR => 'Autodebet keluar',
         self::PINDAH_MASUK => 'Autodebet masuk',
+        self::PINJAMAN_CAIR => 'Pencairan pinjaman',
+        self::ANGSURAN => 'Angsuran pinjaman',
     ];
 
     protected $table = 'transaksi';
@@ -159,6 +170,15 @@ class Transaksi extends Model
     public function isKasLain(): bool
     {
         return $this->rekening_id === null;
+    }
+
+    /**
+     * Pencairan/angsuran pinjaman, atau pembatalannya.
+     */
+    public function isPinjaman(): bool
+    {
+        return in_array($this->jenis, self::JENIS_PINJAMAN, true)
+            || ($this->jenis === self::PEMBALIK && in_array($this->pembalikDari?->jenis, self::JENIS_PINJAMAN, true));
     }
 
     /**

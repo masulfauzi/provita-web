@@ -52,7 +52,7 @@ class RingkasanService
     }
 
     /**
-     * Penerimaan − pengeluaran kas lain-lain (menu Kas) pada tanggal tersebut. Pembatalan
+     * Penerimaan − pengeluaran kas lain-lain (menu Kas dan pinjaman) pada tanggal tersebut. Pembatalan
      * tercatat sebagai transaksi pembalik sehingga dihitung pada hari pembatalannya.
      */
     protected function kasLain(Carbon $tanggal): string

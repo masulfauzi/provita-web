@@ -359,6 +359,8 @@ class SesiKasService
             Transaksi::SETOR => ['setor', '', 'Setoran tabungan'],
             Transaksi::TARIK => ['tarik', '', 'Penarikan tabungan'],
             Transaksi::PENUTUPAN => ['penutupan', '', 'Penutupan rekening'],
+            Transaksi::PINJAMAN_CAIR => ['pinjaman_cair', '', 'Pencairan pinjaman'],
+            Transaksi::ANGSURAN => ['angsuran', '', 'Angsuran pinjaman'],
             Transaksi::KAS_MASUK, Transaksi::KAS_KELUAR => ["akun-{$item->akun_id}", (string) $item->akun?->kode, (string) $item->akun?->nama],
             default => ['koreksi', '', 'Koreksi & pembatalan'],
         };

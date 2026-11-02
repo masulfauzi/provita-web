@@ -31,6 +31,7 @@ class JurnalService
         // Autodebet memindahkan simpanan antarrekening nasabah: tidak mengubah saldo akun mana pun.
         Transaksi::PINDAH_KELUAR => [Akun::SIMPANAN, Akun::SIMPANAN],
         Transaksi::PINDAH_MASUK => [Akun::SIMPANAN, Akun::SIMPANAN],
+        Transaksi::PINJAMAN_CAIR => [Akun::PIUTANG_PINJAMAN, Akun::KAS],
     ];
 
     public function __construct(protected PengaturanService $pengaturan) {}
@@ -80,10 +81,14 @@ class JurnalService
     public function balik(Jurnal $jurnal, ?User $user = null, ?string $alasan = null): Jurnal
     {
         if ($jurnal->sumber !== Jurnal::MANUAL) {
+            $transaksi = Transaksi::query()->with('pembalikDari:id,jenis')->find($jurnal->transaksi_id);
+
             throw ValidationException::withMessages([
-                'jurnal' => Transaksi::query()->whereKey($jurnal->transaksi_id)->whereNull('rekening_id')->exists()
-                    ? 'Jurnal dari penerimaan/pengeluaran kas dikoreksi dengan membatalkan bukti kasnya.'
-                    : 'Jurnal dari transaksi tabungan dikoreksi lewat koreksi transaksi di buku tabungan.',
+                'jurnal' => match (true) {
+                    (bool) $transaksi?->isPinjaman() => 'Jurnal pinjaman dikoreksi lewat pembatalan di menu Pinjaman.',
+                    (bool) $transaksi?->isKasLain() => 'Jurnal dari penerimaan/pengeluaran kas dikoreksi dengan membatalkan bukti kasnya.',
+                    default => 'Jurnal dari transaksi tabungan dikoreksi lewat koreksi transaksi di buku tabungan.',
+                },
             ]);
         }
 
@@ -115,11 +120,19 @@ class JurnalService
     }
 
     /**
-     * Jurnal otomatis untuk satu transaksi (tabungan atau penerimaan/pengeluaran kas). Dipanggil
-     * di dalam DB transaction yang sama, sehingga transaksi dan jurnalnya selalu tersimpan bersama.
+     * Jurnal otomatis untuk satu transaksi (tabungan, penerimaan/pengeluaran kas, atau pinjaman).
+     * Dipanggil di dalam DB transaction yang sama, sehingga transaksi dan jurnalnya selalu
+     * tersimpan bersama. $baris diisi bila jurnalnya lebih dari dua baris (mis. angsuran:
+     * D Kas / K Piutang pinjaman / K Pendapatan jasa).
+     *
+     * @param  list<array{akun_id: string, debit?: string|null, kredit?: string|null}>|null  $baris
      */
-    public function dariTransaksi(Transaksi $transaksi): Jurnal
+    public function dariTransaksi(Transaksi $transaksi, ?array $baris = null): Jurnal
     {
+        if ($baris !== null) {
+            return $this->simpan($this->dataJurnalTransaksi($transaksi), $baris);
+        }
+
         $jenis = $transaksi->jenis;
         $tukar = false;
 
@@ -141,16 +154,41 @@ class JurnalService
             [$debit, $kredit] = [$kredit, $debit];
         }
 
-        return $this->simpan([
+        return $this->simpan($this->dataJurnalTransaksi($transaksi), [
+            ['akun_id' => $debit, 'debit' => $transaksi->nominal],
+            ['akun_id' => $kredit, 'kredit' => $transaksi->nominal],
+        ]);
+    }
+
+    /**
+     * Baris jurnal suatu transaksi dengan debit & kredit ditukar, untuk jurnal pembatalannya.
+     *
+     * @return list<array{akun_id: string, debit: string, kredit: string, keterangan: string|null}>
+     */
+    public function barisTerbalik(Transaksi $transaksi): array
+    {
+        return Jurnal::query()->where('transaksi_id', $transaksi->id)->firstOrFail()
+            ->detail()->get()
+            ->map(fn ($detail) => [
+                'akun_id' => $detail->akun_id,
+                'debit' => $detail->kredit,
+                'kredit' => $detail->debit,
+                'keterangan' => $detail->keterangan,
+            ])->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function dataJurnalTransaksi(Transaksi $transaksi): array
+    {
+        return [
             'tanggal' => $transaksi->tanggal->toDateString(),
             'keterangan' => mb_strimwidth($this->keteranganTransaksi($transaksi), 0, 255),
             'sumber' => Jurnal::TRANSAKSI,
             'transaksi_id' => $transaksi->id,
             'user_id' => $transaksi->user_id,
-        ], [
-            ['akun_id' => $debit, 'debit' => $transaksi->nominal],
-            ['akun_id' => $kredit, 'kredit' => $transaksi->nominal],
-        ]);
+        ];
     }
 
     /**

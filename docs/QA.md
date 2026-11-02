@@ -30,7 +30,8 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 23. [Hak akses per peran](#23-hak-akses-per-peran)
 24. [Uji umum & ketahanan](#24-uji-umum--ketahanan)
 25. [Komputer terdaftar](#25-komputer-terdaftar)
-26. [Ringkasan hasil](#26-ringkasan-hasil)
+26. [Pinjaman](#26-pinjaman)
+27. [Ringkasan hasil](#27-ringkasan-hasil)
 
 ---
 
@@ -114,7 +115,7 @@ Jika browser dihapus datanya (clear cookies/riwayat), teller tidak bisa login la
 ### 0.5 Perilaku yang memang begitu (bukan bug)
 
 - Belum ada fitur **cetak struk setor/tarik**. Buku tabungan dicetak lewat tombol **Cetak buku** di halaman rekening (bagian 12); bila tidak ada printer buku tabungan, pilih "Simpan sebagai PDF" di dialog cetak browser.
-- Menu **Pinjaman** masih bertuliskan segera hadir.
+- Pinjaman hanya untuk nasabah **guru/karyawan**, dicairkan dan diangsur **tunai** (tidak bisa dipotong dari tabungan), dan tanpa denda keterlambatan. Pencairan memerlukan **saldo kas pembukuan** yang cukup (seperti pengeluaran kas), bukan modal laci sesi kas.
 - Belum ada saldo minimal mengendap: rekening boleh bersaldo Rp 0.
 - Tanggal transaksi aktif yang **kosong** di Pengaturan berarti otomatis mengikuti tanggal hari ini. Isian tidak terisi sendiri dengan tanggal hari ini.
 - Tidak ada akun admin bawaan. Akun admin dibuat sendiri di bagian 3.
@@ -384,7 +385,7 @@ Saldo kas tersedia saat masuk bagian ini harus **Rp 383.000**.
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
 | KAS-01 | Buka Penerimaan kas. | Tampil tanggal T dan **Saldo kas tersedia Rp 383.000**. Ada kolom Kategori, Nasabah (opsional), Nominal, Keterangan, dan tabel riwayat (kosong). | | |
-| KAS-02 | Buka pilihan Kategori. | Hanya akun pendapatan: Pendapatan administrasi, Pendapatan bunga pinjaman, Pendapatan penjualan buku tabungan. | | |
+| KAS-02 | Buka pilihan Kategori. | Hanya akun pendapatan: Pendapatan administrasi, Pendapatan jasa pinjaman, Pendapatan penjualan buku tabungan. | | |
 | KAS-03 | Pilih **Pendapatan penjualan buku tabungan**. | Nominal otomatis Rp 15.000 dan keterangan otomatis "Penjualan buku tabungan". | | |
 | KAS-04 | Pilih nasabah `Budi Santoso`, klik **Simpan penerimaan**, konfirmasi. | "Penerimaan kas KM-<tahun>-000001 sebesar Rp 15.000 tercatat." Muncul di tabel; saldo kas tersedia Rp 398.000. | | |
 | KAS-05 | Buka buku tabungan R1 Budi. | Saldo **tetap Rp 275.000**; penjualan buku tidak muncul di mutasi rekening. | | |
@@ -433,7 +434,7 @@ Login sebagai `bendahara`. Menu **Keuangan → Bagan akun**.
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
-| AKN-01 | Buka Bagan akun. | 12 akun dikelompokkan per kategori: Aset (1-101 Kas, 1-102 Bank, 1-201 Piutang pinjaman), Kewajiban (2-101), Ekuitas (3-101, 3-201), Pendapatan (4-101, 4-102, 4-103), Beban (5-101, 5-102, 5-103). Akun sistem bertanda **Sistem**. Kolom Dipakai pada Kas lebih dari 0. | | |
+| AKN-01 | Buka Bagan akun. | 12 akun dikelompokkan per kategori: Aset (1-101 Kas, 1-102 Bank, 1-201 Piutang pinjaman), Kewajiban (2-101), Ekuitas (3-101, 3-201), Pendapatan (4-101, 4-102 Pendapatan jasa pinjaman, 4-103), Beban (5-101, 5-102, 5-103). Akun sistem bertanda **Sistem** (termasuk 1-201 dan 4-102 yang dipakai jurnal pinjaman). Kolom Dipakai pada Kas lebih dari 0. | | |
 | AKN-02 | Periksa tombol pada 1-101 Kas. | Tidak ada tombol Nonaktifkan dan Hapus. | | |
 | AKN-03 | Ubah 1-101 Kas: coba ganti kategori. | Pilihan kategori terkunci dengan penjelasan. Nama boleh diubah (jangan disimpan). | | |
 | AKN-04 | **Tambah akun** kode `5-104`, nama `Beban konsumsi rapat`, kategori Beban. Simpan. | "Akun 5-104 Beban konsumsi rapat ditambahkan." | | |
@@ -625,7 +626,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | Tabungan → Autodebet | tampil | **tidak** | tampil |
 | Kas → Sesi kas | tampil | **tidak** | tampil |
 | Kas → Penerimaan kas / Pengeluaran kas | tampil | **tidak** | tampil |
-| Keuangan → Pinjaman | **tidak** | **tidak** | tampil |
+| Keuangan → Pinjaman | tampil | **tidak** | tampil |
 | Keuangan → Jurnal umum / Bagan akun | **tidak** | **tidak** | tampil |
 | Laporan → Laporan kas harian | tampil | **tidak** | tampil |
 | Laporan → Laporan keuangan | tampil | **tidak** | tampil |
@@ -638,9 +639,9 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | --- | --- | --- | --- | --- |
 | HAK-01 | Login `teller`, cocokkan menu dengan tabel 23.1. | Sesuai kolom teller. | | |
 | HAK-02 | Login `admin1` (`Rahasia123`), cocokkan menu. | Sesuai kolom admin1. | | |
-| HAK-03 | Login `bendahara`, cocokkan menu. Buka **Pinjaman**. | Sesuai kolom bendahara. Pinjaman menampilkan halaman segera hadir. | | |
-| HAK-04 | Sebagai `teller`, ketik langsung di alamat browser: `/jurnal`, `/akun`, `/pengguna`, `/log-aktivitas`, `/jenis-rekening`, `/pinjaman`, `/perangkat`. | Setiap alamat menampilkan halaman **403 / tidak punya akses**, bukan isi halaman. | | |
-| HAK-05 | Sebagai `admin1`, ketik `/rekening`, `/nasabah`, `/transaksi`, `/kas/penerimaan`, `/kas/sesi`, `/laporan`, `/laporan/harian`, `/autodebet`, `/perangkat`. | Semua 403. Tanda sesi kas tidak tampil di bagian atas. | | |
+| HAK-03 | Login `bendahara`, cocokkan menu. Buka **Pinjaman**. | Sesuai kolom bendahara. Pinjaman menampilkan daftar pinjaman dan tombol **Pinjaman baru**. | | |
+| HAK-04 | Sebagai `teller`, ketik langsung di alamat browser: `/jurnal`, `/akun`, `/pengguna`, `/log-aktivitas`, `/jenis-rekening`, `/perangkat`. | Setiap alamat menampilkan halaman **403 / tidak punya akses**, bukan isi halaman. | | |
+| HAK-05 | Sebagai `admin1`, ketik `/rekening`, `/nasabah`, `/transaksi`, `/kas/penerimaan`, `/kas/sesi`, `/laporan`, `/laporan/harian`, `/autodebet`, `/perangkat`, `/pinjaman`. | Semua 403. Tanda sesi kas tidak tampil di bagian atas. | | |
 | HAK-06 | Sebagai `teller`, buka Pengaturan. | Kartu **Operasional harian** bisa diubah. Kartu **Keuangan** dan **Umum** bertanda **Hanya lihat**, isian abu-abu, tanpa tombol Simpan. | | |
 | HAK-07 | Sebagai `admin1`, buka Pengaturan. | Kartu **Umum** bisa diubah; **Operasional harian** dan **Keuangan** hanya lihat. | | |
 | HAK-08 | Sebagai `admin1`, buka Jenis Rekening dan Pengguna. Tambah, ubah, reset kata sandi tersedia. | Bisa dipakai seperti bendahara. | | |
@@ -691,7 +692,36 @@ Butuh tiga jendela: **browser 1** (`PC Uji 1`), **browser 2** (`PC Uji 2`), dan 
 
 ---
 
-## 26. Ringkasan hasil
+## 26. Pinjaman
+
+Dikerjakan **terakhir**: pinjaman menggerakkan kas dan jurnal, sehingga angka bagian 18–20 tidak berlaku lagi setelahnya. Aturan: hanya guru/karyawan, plafon Rp 10.000.000, jasa flat 1% per bulan dari pokok, tanpa denda, satu pinjaman berjalan per orang, pencairan dan angsuran tunai lewat sesi kas.
+
+**Persiapan:** login `bendahara`, Pengaturan → Tanggal transaksi aktif = tanggal **setelah** tanggal terakhir yang sudah dipakai (sebut **P**). Simpan, lalu buka **Kas → Sesi kas** dengan modal awal `1.000.000` dan teller piket Budi. Keluar, lalu login `teller` (kecuali disebut lain).
+
+| ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
+| --- | --- | --- | --- | --- |
+| PJM-01 | (`bendahara`) Buka Pengaturan, kartu **Keuangan**. | Ada **Plafon pinjaman Rp 10.000.000**, **Jasa pinjaman per bulan 1 %**, dan **Jangka waktu maksimal pinjaman (bulan) 24**. | | |
+| PJM-02 | (`teller`) Buka **Keuangan → Pinjaman**. | Tabel "Belum ada pinjaman." dan tombol **Pinjaman baru**. | | |
+| PJM-03 | Klik **Pinjaman baru**. Di kolom Nasabah ketik `Budi`, lalu `OSIS`, lalu `Dedi`. | Budi (siswa) dan OSIS (lembaga) **tidak muncul**. Dedi Pratama muncul dengan keterangan "Guru". Subjudul halaman menyebut "Jasa flat 1% per bulan". | | |
+| PJM-04 | Pilih Dedi, isi Pokok `500.000` dan Jangka waktu `5`. | Tabel **Jadwal angsuran** langsung berisi 5 baris: tiap baris pokok **Rp 100.000**, jasa **Rp 5.000**, angsuran **Rp 105.000**, jatuh tempo P + 1 bulan sampai P + 5 bulan. Baris total: Rp 500.000 · Rp 25.000 · Rp 525.000. | | |
+| PJM-05 | Coba isi Pokok `20.000.000` dan Jangka waktu `30`. | Isian berhenti di batas: pokok paling besar Rp 10.000.000, jangka waktu paling lama 24 bulan. | | |
+| PJM-06 | Isi Pokok `5.000.000`, Jangka waktu `5`, klik **Simpan & cairkan** → **Ya, cairkan**. | Ditolak: "Saldo kas tidak cukup: tersedia Rp …, dibutuhkan Rp 5.000.000." Tidak ada pinjaman tersimpan. | | |
+| PJM-07 | Kembalikan Pokok `500.000`, Jangka waktu `5`, keterangan `Biaya sekolah anak`. **Simpan & cairkan** → **Ya, cairkan**. | Pindah ke halaman detail: "Pinjaman PJ-…-000001 sebesar Rp 500.000 dicairkan." Ringkasan: status **Berjalan**, total jasa Rp 25.000, angsuran per bulan Rp 105.000, sisa pokok Rp 500.000, sisa jasa Rp 25.000. Jadwal 5 baris **Belum dibayar**. Riwayat kas berisi "Pencairan pinjaman PJ-…-000001", keluar Rp 500.000. | | |
+| PJM-08 | Klik **Pinjaman baru** lagi dan pilih Dedi. | Pilihan Dedi bertanda "pinjaman berjalan PJ-…-000001", muncul peringatan kuning "masih punya pinjaman berjalan", dan tombol **Simpan & cairkan** tidak bisa diklik. | | |
+| PJM-09 | Buka detail PJ-…-000001. Di **Bayar angsuran**, isi `2`, klik **Terima angsuran** → **Ya, terima**. | Total diterima Rp 210.000. "Angsuran AP-…-000001 sebesar Rp 210.000 diterima." Angsuran ke-1 dan ke-2 **Lunas** dengan tanggal P dan nomor AP-…-000001. Sisa pokok Rp 300.000, sisa jasa Rp 15.000. | | |
+| PJM-10 | (`bendahara`) Di detail PJ-…-000001 klik **Jurnal pencairan**. Lalu buka **Keuangan → Jurnal umum** dan buka jurnal "AP-…-000001". | Pencairan: D 1-201 Piutang pinjaman Rp 500.000 / K 1-101 Kas Rp 500.000, sumber bertaut ke "Pinjaman PJ-…-000001". Angsuran: D Kas Rp 210.000 / K Piutang pinjaman Rp 200.000 / K 4-102 Pendapatan jasa pinjaman Rp 10.000. Kedua jurnal tidak punya tombol **Koreksi** (dikoreksi lewat pembatalan di menu Pinjaman). | | |
+| PJM-11 | (`teller`) Detail PJ-…-000001: **Batalkan pembayaran terakhir**, alasan `Uji batal`, **Ya, batalkan**. | "Pembayaran angsuran sebesar Rp 210.000 dibatalkan." Angsuran 1–2 kembali **Belum dibayar**. Di Riwayat kas, angsuran AP-…-000001 tercoret bertanda **Dibatalkan** dan ada baris Pembatalan keluar Rp 210.000. | | |
+| PJM-12 | Bayar angsuran `5` (semua). | Total Rp 525.000. "… diterima. Pinjaman PJ-…-000001 lunas." Status **Lunas**, sisa pokok Rp 0, kartu Bayar angsuran hilang. | | |
+| PJM-13 | Pinjaman baru untuk **Eko**: pokok `300.000`, 3 bulan, cairkan. Di detailnya klik **Batalkan pinjaman**, alasan `Salah input`. | Jadwal 3 × Rp 103.000. Setelah dibatalkan: "Pinjaman PJ-…-000002 dibatalkan; uang pinjaman kembali ke kas." Status **Dibatalkan**, kotak merah berisi alasan dan nama petugas, tombol bayar dan batal tidak tampil. | | |
+| PJM-14 | Pinjaman baru untuk **Dedi** (sudah lunas, jadi boleh lagi): pokok `100.000`, 2 bulan, cairkan. Lalu (`bendahara`) ubah Tanggal transaksi aktif = **P + 1 bulan + 1 hari**, buka detail PJ-…-000003 dan daftar Pinjaman. | Pinjaman PJ-…-000003 tersimpan. Setelah tanggal diubah: angsuran ke-1 bertanda **Terlambat** (merah); di daftar, kolom Jatuh tempo berikutnya bertanda **Terlambat**. Kembalikan Tanggal transaksi aktif ke **P**. | | |
+| PJM-15 | (`bendahara`) Ubah Jasa pinjaman per bulan menjadi `2`, Simpan. Buka detail PJ-…-000001 dan PJ-…-000003, lalu buka Pinjaman baru. Kembalikan ke `1`. | Pinjaman lama tetap **1% per bulan** dengan angka jadwal yang sama. Halaman Pinjaman baru menyebut "Jasa flat 2% per bulan" selama pengaturan 2. | | |
+| PJM-16 | Buka daftar Pinjaman: cari `Eko`, lalu filter status **Lunas**. | Pencarian hanya menampilkan PJ-…-000002 (**Dibatalkan**). Filter Lunas hanya PJ-…-000001. | | |
+| PJM-17 | Buka **Laporan kas harian** tanggal P. | Pemasukan: **Angsuran pinjaman** Rp 735.000 (2 transaksi) dan Koreksi & pembatalan Rp 300.000. Pengeluaran: **Pencairan pinjaman** Rp 900.000 (3 transaksi) dan Koreksi & pembatalan Rp 210.000. Saldo kas akhir **Rp 925.000**. | | |
+| PJM-18 | Tutup sesi kas P dengan uang fisik `925.000`. | Tanda **Cocok**, sesi ditutup tanpa selisih. Setelah ditutup, tombol Terima angsuran ditolak dengan pesan sesi kas sudah ditutup. | | |
+
+---
+
+## 27. Ringkasan hasil
 
 | Bagian | Jumlah skenario | ✅ | ❌ | ⏭️ |
 | --- | --- | --- | --- | --- |
@@ -720,7 +750,8 @@ Butuh tiga jendela: **browser 1** (`PC Uji 1`), **browser 2** (`PC Uji 2`), dan 
 | 23. Hak akses | 10 | | | |
 | 24. Uji umum & ketahanan | 13 | | | |
 | 25. Komputer terdaftar | 11 | | | |
-| **Total** | **279** | | | |
+| 26. Pinjaman | 18 | | | |
+| **Total** | **297** | | | |
 
 **Daftar bug ditemukan**
 

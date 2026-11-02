@@ -98,7 +98,7 @@ app/
 │       ├── Akuntansi/             # bagan akun, jurnal umum, jurnal otomatis dari transaksi
 │       ├── Kas/                   # penerimaan & pengeluaran kas lain-lain, bukti kas
 │       ├── Laporan/               # neraca, laba rugi, arus kas, neraca saldo, buku besar (+ Excel & cetak)
-│       └── Pinjaman/              # kerangka, diisi di issue berikutnya
+│       └── Pinjaman/              # pinjaman guru/karyawan, jadwal angsuran
 ├── Jobs/                      # HitungBungaBulanan, CekJatuhTempoDeposito
 ├── Providers/ModuleServiceProvider.php
 └── Support/
@@ -139,10 +139,13 @@ Penerimaan & pengeluaran kas tidak punya tabel sendiri: dicatat di tabel `transa
 
 **Autodebet** (menu Tabungan → Autodebet, permission `autodebet.lihat`/`autodebet.kelola`): pindah buku terjadwal dari Tabungan Pelajar (rekening utama) ke rekening lain milik nasabah yang sama (Wisata, Wisuda, Foto Katalog, dll.). Nominal ditentukan nasabah lewat teller; periode mingguan (hari Senin–Minggu) atau bulanan (tanggal 1–28); target opsional. Autodebet diproses saat **sesi kas dibuka** untuk semua jadwal yang jatuh tempo s.d. tanggal transaksi (termasuk yang terlewat). Saldo kurang dicatat gagal lalu lanjut ke jadwal berikutnya; bila target tercapai, debet terakhir sebesar sisa target lalu status menjadi selesai. Transaksinya berjenis `pindah_keluar`/`pindah_masuk` (tidak memengaruhi kas fisik maupun laporan kas harian, jurnal D/K Simpanan) dan tidak bisa dikoreksi per baris; hentikan atau ubah autodebetnya.
 
+**Pinjaman** (menu Keuangan → Pinjaman, permission `pinjaman.lihat`/`pinjaman.akad`/`pinjaman.angsuran`/`pinjaman.batal`, teller & bendahara): pinjaman tunai untuk nasabah **guru/karyawan**, satu pinjaman berjalan per orang, tanpa denda. Saat akad, petugas mengisi pokok dan jangka waktu (bulan) lalu jadwal angsuran langsung dibuat: pokok per bulan = pokok ÷ tenor dibulatkan ke bawah (sisa pembagian di angsuran terakhir), jasa flat = pokok × persen jasa (dibulatkan ke rupiah), jatuh tempo = tanggal akad + n bulan. Plafon (`plafon_pinjaman`, 0 = tanpa batas), persen jasa per bulan (`jasa_pinjaman_persen`), dan tenor maksimal (`tenor_maksimal_pinjaman`) diatur di Pengaturan → Keuangan; persen jasa dibekukan per akad. Pencairan dan angsuran adalah uang fisik di tabel `transaksi` tanpa rekening (jenis `pinjaman_cair` nomor `PJ-`, `angsuran` nomor `AP-`), sehingga wajib sesi kas terbuka, masuk laporan kas harian, dan ditolak bila saldo kas kurang. Jurnal: pencairan D 1-201 Piutang pinjaman / K Kas; angsuran D Kas / K Piutang pinjaman (pokok) / K 4-102 Pendapatan jasa pinjaman (jasa). Angsuran dibayar berurutan (boleh beberapa sekaligus). Salah input diperbaiki dengan **batalkan pembayaran terakhir** atau **batalkan pinjaman** (hanya bila belum ada angsuran dibayar); keduanya membuat transaksi pembalik dan jurnal balik.
+
 ## Deploy di VPS
 
 1. `composer install --no-dev --optimize-autoloader && npm ci && npm run build`
 2. `php artisan migrate --force && php artisan permission:sync-modules --prune`
+   - Bila ada pengaturan atau akun bawaan baru (mis. fitur Pinjaman), jalankan juga seeder-nya: `php artisan db:seed --class="App\Http\Modules\Pengaturan\Database\Seeders\PengaturanSeeder" --force` (hanya menambah kunci baru, nilai lama tidak ditimpa) dan `php artisan db:seed --class="App\Http\Modules\Akuntansi\Database\Seeders\AkuntansiSeeder" --force` (mengembalikan nama, kategori, peran, dan status aktif akun bawaan sesuai kode; akun tambahan buatan bendahara tidak tersentuh)
 3. `php artisan config:cache && php artisan route:cache && php artisan view:cache`
 
 Migration masih tahap pengembangan: **satu file per tabel**, hanya struktur akhir (tanpa pengubahan data); data awal ada di `{Modul}Seeder`. Bila file migration disederhanakan ulang, database lama dibuat ulang dengan `php artisan migrate:fresh --seed --force` (semua data terhapus).
