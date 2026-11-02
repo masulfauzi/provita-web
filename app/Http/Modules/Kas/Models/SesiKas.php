@@ -4,10 +4,12 @@ namespace App\Http\Modules\Kas\Models;
 
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -50,9 +52,18 @@ class SesiKas extends Model
             'saldo_sistem' => 'decimal:2',
             'uang_fisik' => 'decimal:2',
             'selisih' => 'decimal:2',
+            'total_tambahan' => 'decimal:2', // withSum('tambahan as total_tambahan') di riwayat
             'dibuka_at' => 'datetime',
             'ditutup_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Modal awal ditambah semua tambahan modal di tengah sesi.
+     */
+    public function totalModal(): string
+    {
+        return Money::add($this->modal_awal, ...$this->tambahan->pluck('nominal')->all());
     }
 
     public function isDitutup(): bool
@@ -78,6 +89,16 @@ class SesiKas extends Model
         return $this->belongsToMany(Nasabah::class, 'sesi_kas_petugas')
             ->withPivot('hadir_at')
             ->orderBy('nama');
+    }
+
+    /**
+     * Tambahan modal di tengah sesi, urut waktu dicatat.
+     *
+     * @return HasMany<SesiKasTambahan, $this>
+     */
+    public function tambahan(): HasMany
+    {
+        return $this->hasMany(SesiKasTambahan::class)->orderBy('created_at');
     }
 
     /**

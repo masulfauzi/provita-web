@@ -15,6 +15,8 @@ Route::prefix('kas')->name('kas.')->group(function () {
         Route::get('/', [SesiKasController::class, 'index'])->name('sesi');
         Route::post('/', [SesiKasController::class, 'buka'])->name('sesi.buka');
         Route::post('/{sesi}/tutup', [SesiKasController::class, 'tutup'])->name('sesi.tutup');
+        Route::post('/{sesi}/tambahan', [SesiKasController::class, 'tambahModal'])->name('sesi.tambahan');
+        Route::delete('/{sesi}/tambahan/{tambahan}', [SesiKasController::class, 'hapusTambahan'])->name('sesi.tambahan.hapus');
     });
 
     Route::get('/{kas}', [KasController::class, 'show'])->middleware('can:kas.lihat')->name('show');

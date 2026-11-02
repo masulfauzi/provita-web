@@ -4,6 +4,7 @@ namespace App\Http\Modules\Kas\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Modules\Kas\Models\SesiKas;
+use App\Http\Modules\Kas\Models\SesiKasTambahan;
 use App\Http\Modules\Kas\Services\SesiKasService;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Support\Money;
@@ -72,5 +73,26 @@ class SesiKasController extends Controller
         };
 
         return back()->with('success', 'Sesi kas '.$sesi->tanggal->translatedFormat('j F Y')." ditutup. {$hasil}");
+    }
+
+    public function tambahModal(Request $request, SesiKas $sesi): RedirectResponse
+    {
+        $data = $request->validate([
+            'nominal' => ['required', 'numeric', 'min:1', 'max:9999999999999.99', 'decimal:0,2'],
+            'keterangan' => ['required', 'string', 'max:255'],
+        ], attributes: ['nominal' => 'nominal', 'keterangan' => 'keterangan']);
+
+        $tambahan = $this->service->tambahModal($sesi, (string) $data['nominal'], $data['keterangan'], $request->user());
+
+        return back()->with('success', 'Tambahan modal '.Money::format($tambahan->nominal).' dicatat.');
+    }
+
+    public function hapusTambahan(SesiKas $sesi, SesiKasTambahan $tambahan): RedirectResponse
+    {
+        abort_unless($tambahan->sesi_kas_id === $sesi->id, 404);
+
+        $this->service->hapusTambahan($tambahan);
+
+        return back()->with('success', 'Tambahan modal '.Money::format($tambahan->nominal).' dihapus.');
     }
 }

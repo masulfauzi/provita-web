@@ -5,6 +5,7 @@ import AutoComplete from 'primevue/autocomplete';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import Tag from 'primevue/tag';
@@ -17,6 +18,7 @@ import PageHeader from '@/Components/PageHeader.vue';
 import { usePermission } from '@/composables/usePermission';
 import { useSearch } from '@/composables/useSearch';
 import { rupiah } from '@/utils/format';
+import TambahanModal from '../Components/TambahanModal.vue';
 
 const props = defineProps({
     tanggal: { type: String, required: true },
@@ -34,6 +36,23 @@ const tanggalLain = computed(() => props.rekap && props.rekap.tanggal !== props.
 
 const formBuka = useForm({ modal_awal: Number(props.saranModal) || null, petugas: [] });
 const formTutup = useForm({ uang_fisik: null, keterangan: '' });
+
+// Tambahan modal di tengah sesi, mis. uang dari brankas saat kas laci kurang.
+const dialogTambahan = ref(false);
+const formTambahan = useForm({ nominal: null, keterangan: '' });
+
+function bukaTambahan() {
+    formTambahan.reset();
+    formTambahan.clearErrors();
+    dialogTambahan.value = true;
+}
+
+function simpanTambahan() {
+    formTambahan.post(`/kas/sesi/${sesi.value.id}/tambahan`, {
+        preserveScroll: true,
+        onSuccess: () => (dialogTambahan.value = false),
+    });
+}
 
 // Teller piket dipilih dari nasabah siswa aktif.
 const { suggestions, search: cariSiswa } = useSearch('/nasabah/cari?jenis=siswa');
@@ -174,6 +193,20 @@ function reload(params) {
             <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
                 <dt class="text-muted-color">Modal awal</dt>
                 <dd class="text-right"><MoneyText :value="rekap.modal_awal" /></dd>
+                <dt class="text-muted-color">Tambahan modal</dt>
+                <dd class="text-right">+ <MoneyText :value="rekap.total_tambahan_modal" /></dd>
+                <div class="col-span-2 -mt-1">
+                    <TambahanModal :items="rekap.tambahan_modal" :sesi-id="sesi.id" bisa-hapus />
+                    <Button
+                        type="button"
+                        label="Tambah modal"
+                        icon="pi pi-plus"
+                        size="small"
+                        text
+                        class="mt-1 -ml-3"
+                        @click="bukaTambahan"
+                    />
+                </div>
                 <dt class="text-muted-color">Pemasukan</dt>
                 <dd class="text-right text-green-600 dark:text-green-400">
                     + <MoneyText :value="rekap.total_pemasukan" />
@@ -253,6 +286,11 @@ function reload(params) {
             <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
                 <dt class="text-muted-color">Modal awal</dt>
                 <dd class="text-right"><MoneyText :value="sesi.modal_awal" /></dd>
+                <template v-if="rekap.tambahan_modal.length">
+                    <dt class="text-muted-color">Tambahan modal</dt>
+                    <dd class="text-right">+ <MoneyText :value="rekap.total_tambahan_modal" /></dd>
+                    <div class="col-span-2 -mt-1"><TambahanModal :items="rekap.tambahan_modal" /></div>
+                </template>
                 <dt class="text-muted-color">Saldo kas seharusnya</dt>
                 <dd class="text-right"><MoneyText :value="sesi.saldo_sistem" /></dd>
                 <dt class="text-muted-color">Uang fisik</dt>
@@ -303,7 +341,12 @@ function reload(params) {
                     </template>
                 </Column>
                 <Column header="Modal awal" class="text-right">
-                    <template #body="{ data }"><MoneyText :value="data.modal_awal" /></template>
+                    <template #body="{ data }">
+                        <MoneyText :value="data.modal_awal" />
+                        <div v-if="Number(data.total_tambahan)" class="text-xs text-muted-color">
+                            + tambahan <MoneyText :value="data.total_tambahan" />
+                        </div>
+                    </template>
                 </Column>
                 <Column header="Saldo sistem" class="text-right">
                     <template #body="{ data }"
@@ -340,4 +383,43 @@ function reload(params) {
             </DataTable>
         </div>
     </div>
+
+    <Dialog v-model:visible="dialogTambahan" modal header="Tambah modal" class="w-full max-w-md">
+        <form class="flex flex-col gap-4" @submit.prevent="simpanTambahan">
+            <p class="text-sm text-muted-color">
+                Catat uang tunai yang ditambahkan ke laci di tengah sesi, mis. saat kas tidak cukup untuk penarikan.
+                Saldo kas seharusnya ikut bertambah.
+            </p>
+            <div class="flex flex-col gap-2">
+                <label for="nominal_tambahan" class="font-medium">Nominal</label>
+                <MoneyInput
+                    v-model="formTambahan.nominal"
+                    input-id="nominal_tambahan"
+                    :invalid="!!formTambahan.errors.nominal"
+                    fluid
+                />
+                <FieldError :message="formTambahan.errors.nominal || formTambahan.errors.sesi" />
+            </div>
+            <div class="flex flex-col gap-2">
+                <label for="keterangan_tambahan" class="font-medium">Keterangan</label>
+                <InputText
+                    id="keterangan_tambahan"
+                    v-model="formTambahan.keterangan"
+                    placeholder="mis. Uang dari brankas bendahara"
+                    :invalid="!!formTambahan.errors.keterangan"
+                />
+                <FieldError :message="formTambahan.errors.keterangan" />
+            </div>
+            <div class="flex justify-end gap-2">
+                <Button type="button" label="Batal" severity="secondary" text @click="dialogTambahan = false" />
+                <Button
+                    type="submit"
+                    label="Simpan"
+                    icon="pi pi-check"
+                    :loading="formTambahan.processing"
+                    :disabled="!formTambahan.nominal || !formTambahan.keterangan"
+                />
+            </div>
+        </form>
+    </Dialog>
 </template>

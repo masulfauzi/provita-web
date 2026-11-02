@@ -38,7 +38,7 @@ class DashboardController extends Controller
         if (class_exists(RingkasanService::class)) {
             $harian = app(RingkasanService::class)->harian($tanggal);
             $sesi = class_exists(SesiKasService::class) ? app(SesiKasService::class)->hariIni() : null;
-            $modal = $sesi ? Money::of($sesi->modal_awal) : '0.00';
+            $modal = $sesi ? $sesi->totalModal() : '0.00';
 
             $kartu[] = $this->kartu('Saldo kas hari ini', Money::add($modal, $harian['mutasi_kas']), 'uang', 'pi pi-wallet',
                 ($sesi ? 'Modal sesi '.Money::format($modal) : 'Sesi kas belum dibuka').' + mutasi kas '.Money::format($harian['mutasi_kas'])

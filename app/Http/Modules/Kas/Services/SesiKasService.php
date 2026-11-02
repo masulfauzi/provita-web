@@ -4,6 +4,7 @@ namespace App\Http\Modules\Kas\Services;
 
 use App\Http\Modules\Autodebet\Services\AutodebetService;
 use App\Http\Modules\Kas\Models\SesiKas;
+use App\Http\Modules\Kas\Models\SesiKasTambahan;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Pengaturan\Services\PengaturanService;
 use App\Http\Modules\Transaksi\Models\Transaksi;
@@ -73,6 +74,7 @@ class SesiKasService
     {
         return SesiKas::query()
             ->with(['pembuka:id,name', 'penutup:id,name', 'petugas:id,nama,kelas'])
+            ->withSum('tambahan as total_tambahan', 'nominal')
             ->orderByDesc('tanggal')
             ->paginate(min(max($perPage, 5), 100))
             ->withQueryString();
@@ -160,11 +162,7 @@ class SesiKasService
 
         return DB::transaction(function () use ($sesi, $uangFisik, $keterangan, $user) {
             // Transaksi teller membaca sesi dengan shared lock, jadi tidak ada yang menyelip saat tutup.
-            $sesi = SesiKas::query()->whereKey($sesi->getKey())->lockForUpdate()->firstOrFail();
-
-            if ($sesi->isDitutup()) {
-                throw ValidationException::withMessages(['sesi' => "Sesi kas tanggal {$this->tanggal($sesi->tanggal)} sudah ditutup."]);
-            }
+            $sesi = $this->kunciTerbuka($sesi);
 
             $saldo = $this->rekap($sesi->tanggal)['saldo_akhir'];
             $selisih = Money::sub($uangFisik, $saldo);
@@ -189,6 +187,59 @@ class SesiKasService
     }
 
     /**
+     * Mencatat tambahan modal (uang tunai yang ditambahkan ke laci di tengah sesi).
+     *
+     * @throws ValidationException
+     */
+    public function tambahModal(SesiKas $sesi, int|string $nominal, string $keterangan, ?User $user = null): SesiKasTambahan
+    {
+        $nominal = Money::of($nominal);
+
+        if (! Money::isPositive($nominal)) {
+            throw ValidationException::withMessages(['nominal' => 'Tambahan modal harus lebih dari Rp 0.']);
+        }
+
+        return DB::transaction(function () use ($sesi, $nominal, $keterangan, $user) {
+            $sesi = $this->kunciTerbuka($sesi);
+
+            return $sesi->tambahan()->create([
+                'nominal' => $nominal,
+                'keterangan' => $keterangan,
+                'dicatat_oleh' => $user?->id,
+            ]);
+        }, 3);
+    }
+
+    /**
+     * Menghapus tambahan modal yang salah catat; hanya selama sesinya masih terbuka.
+     *
+     * @throws ValidationException
+     */
+    public function hapusTambahan(SesiKasTambahan $tambahan): void
+    {
+        DB::transaction(function () use ($tambahan) {
+            $this->kunciTerbuka($tambahan->sesi);
+            $tambahan->delete();
+        }, 3);
+    }
+
+    /**
+     * Mengunci baris sesi (agar tutup() menunggu) dan memastikan sesi belum ditutup.
+     *
+     * @throws ValidationException
+     */
+    protected function kunciTerbuka(SesiKas $sesi): SesiKas
+    {
+        $sesi = SesiKas::query()->whereKey($sesi->getKey())->lockForUpdate()->firstOrFail();
+
+        if ($sesi->isDitutup()) {
+            throw ValidationException::withMessages(['sesi' => "Sesi kas tanggal {$this->tanggal($sesi->tanggal)} sudah ditutup."]);
+        }
+
+        return $sesi;
+    }
+
+    /**
      * Alasan transaksi uang fisik ditolak, atau null bila boleh. Tanpa user (proses sistem,
      * mis. command console) tidak diperiksa. Dipanggil di dalam DB transaction pemanggil;
      * baris sesi dibaca dengan shared lock agar tutup() menunggu.
@@ -210,7 +261,7 @@ class SesiKasService
     }
 
     /**
-     * Rekap uang fisik pada satu tanggal: modal awal + pemasukan - pengeluaran.
+     * Rekap uang fisik pada satu tanggal: modal awal + tambahan modal + pemasukan - pengeluaran.
      * Biaya administrasi tidak dihitung karena tidak ada uang yang berpindah;
      * koreksi & pembatalan masuk ke pemasukan atau pengeluaran menurut arah mutasinya.
      *
@@ -219,7 +270,10 @@ class SesiKasService
     public function rekap(Carbon|string $tanggal): array
     {
         $tanggal = Carbon::parse($tanggal)->toDateString();
-        $sesi = SesiKas::query()->with(['pembuka:id,name', 'penutup:id,name', 'petugas:id,nama,nis,kelas'])->whereDate('tanggal', $tanggal)->first();
+        $sesi = SesiKas::query()
+            ->with(['pembuka:id,name', 'penutup:id,name', 'petugas:id,nama,nis,kelas', 'tambahan.pencatat:id,name'])
+            ->whereDate('tanggal', $tanggal)
+            ->first();
 
         $transaksi = Transaksi::query()
             ->whereDate('tanggal', $tanggal)
@@ -251,6 +305,8 @@ class SesiKasService
         }
 
         $modal = $sesi ? Money::of($sesi->modal_awal) : '0.00';
+        $tambahan = $sesi?->tambahan ?? collect();
+        $totalTambahan = Money::add('0', ...$tambahan->pluck('nominal')->all());
         $totalMasuk = Money::add('0', ...array_column($kelompok['pemasukan'], 'nilai'));
         $totalKeluar = Money::add('0', ...array_column($kelompok['pengeluaran'], 'nilai'));
 
@@ -266,11 +322,19 @@ class SesiKasService
                 ])->all(),
             ] : null,
             'modal_awal' => $modal,
+            'tambahan_modal' => $tambahan->map(fn (SesiKasTambahan $item) => [
+                'id' => $item->id,
+                'waktu' => $item->created_at->format('H:i'),
+                'nominal' => Money::of($item->nominal),
+                'keterangan' => $item->keterangan,
+                'petugas' => $item->pencatat?->name,
+            ])->values()->all(),
+            'total_tambahan_modal' => $totalTambahan,
             'pemasukan' => array_values($kelompok['pemasukan']),
             'pengeluaran' => array_values($kelompok['pengeluaran']),
             'total_pemasukan' => $totalMasuk,
             'total_pengeluaran' => $totalKeluar,
-            'saldo_akhir' => Money::sub(Money::add($modal, $totalMasuk), $totalKeluar),
+            'saldo_akhir' => Money::sub(Money::add($modal, $totalTambahan, $totalMasuk), $totalKeluar),
             'setelah_tutup' => $sesi?->isDitutup() && $transaksi->contains(fn (Transaksi $item) => $item->created_at->greaterThan($sesi->ditutup_at)),
             'rincian' => $transaksi->map(fn (Transaksi $item) => [
                 'id' => $item->id,

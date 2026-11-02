@@ -122,6 +122,26 @@ onBeforeUnmount(() => {
         <table class="mb-8 w-full max-w-3xl print:max-w-none">
             <tbody>
                 <BarisTotal label="Modal awal" :nilai="data.modal_awal" />
+                <template v-if="data.tambahan_modal?.length">
+                    <JudulKelompok label="Tambahan modal" />
+                    <tr
+                        v-for="item in data.tambahan_modal"
+                        :key="item.id"
+                        class="border-b border-surface-100 dark:border-surface-800"
+                    >
+                        <td class="py-1.5 pl-4 pr-3 text-muted-color tabular-nums print:text-black">
+                            {{ item.waktu }}
+                        </td>
+                        <td class="py-1.5 pr-3">
+                            {{ item.keterangan }}
+                            <span v-if="item.petugas" class="text-xs text-muted-color print:text-black"
+                                >({{ item.petugas }})</span
+                            >
+                        </td>
+                        <td class="py-1.5 text-right"><MoneyText :value="item.nominal" /></td>
+                    </tr>
+                    <BarisTotal label="Total tambahan modal" :nilai="data.total_tambahan_modal" />
+                </template>
                 <template v-for="bagian in ['pemasukan', 'pengeluaran']" :key="bagian">
                     <JudulKelompok
                         :label="bagian === 'pemasukan' ? 'Pemasukan (uang masuk)' : 'Pengeluaran (uang keluar)'"
@@ -149,7 +169,15 @@ onBeforeUnmount(() => {
                 <tr>
                     <td colspan="3" class="py-2" />
                 </tr>
-                <BarisTotal label="Saldo kas akhir (modal + pemasukan − pengeluaran)" :nilai="data.saldo_akhir" utama />
+                <BarisTotal
+                    :label="
+                        data.tambahan_modal?.length
+                            ? 'Saldo kas akhir (modal + tambahan modal + pemasukan − pengeluaran)'
+                            : 'Saldo kas akhir (modal + pemasukan − pengeluaran)'
+                    "
+                    :nilai="data.saldo_akhir"
+                    utama
+                />
                 <template v-if="sesi?.ditutup_at">
                     <BarisTotal label="Uang fisik saat sesi ditutup" :nilai="sesi.uang_fisik" />
                     <BarisTotal label="Selisih (uang fisik − saldo sistem)" :nilai="sesi.selisih" />

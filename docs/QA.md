@@ -664,6 +664,10 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | UMM-07 | **Nominal besar & desimal:** setor R1 `1.500,50`. | Diterima, saldo dan terbilang menampilkan desimal dengan benar (koma), atau isian tidak mengizinkan desimal; catat perilakunya. | | |
 | UMM-08 | Muat ulang (F5) di tengah halaman mana pun. | Halaman tampil kembali normal, tetap login. | | |
 | UMM-09 | **Rekening lembaga:** buka detail OSIS (NSB-19) → **Buka rekening**, jenis Tabungan Pelajar, setoran awal `50.000`. Lalu buka rekening OSIS lagi dengan jenis **Tabungan Wisata**. | Nomor rekening = angka dari nomor nasabah OSIS, mis. NSB-000007 → **000007**; rekening Wisata → **41000007**. Tidak diminta NIS/NIP. | | |
+| UMM-10 | **Tambahan modal (bendahara):** masih di sesi kas tanggal terakhir bagian 21. Login `bendahara`, buka **Kas → Sesi kas**, catat Saldo kas seharusnya (sebut **S**). Klik **Tambah modal**, isi nominal `200.000` dan keterangan `Uang dari brankas bendahara`, Simpan. | "Tambahan modal Rp 200.000 dicatat." Di bawah Modal awal muncul baris **Tambahan modal + Rp 200.000** dengan rincian jam · keterangan · (Bendahara). Saldo kas seharusnya menjadi **S + Rp 200.000**. Modal awal tidak berubah. | | |
+| UMM-11 | **Salah catat:** login `teller`, Tambah modal `1.000.000` keterangan `Salah ketik`. Lalu klik ikon tempat sampah pada baris itu → **Hapus**. Coba juga Simpan dengan nominal `0` atau keterangan kosong. | Setelah dicatat, saldo seharusnya naik Rp 1.000.000; setelah dihapus: "Tambahan modal Rp 1.000.000 dihapus." dan saldo kembali S + Rp 200.000. Nominal 0 / keterangan kosong tidak bisa disimpan. Log aktivitas berisi "Tambahan modal dicatat" dan "Tambahan modal dihapus". | | |
+| UMM-12 | Buka **Laporan kas harian** tanggal tersebut, lalu **Excel**. Lihat juga Dashboard. | Ada kelompok **Tambahan modal** (jam, keterangan, petugas, Rp 200.000) dan "Total tambahan modal Rp 200.000"; label saldo akhir menyebut "modal + tambahan modal + pemasukan − pengeluaran". Excel memuat baris yang sama. Dashboard "Saldo kas hari ini" ikut bertambah Rp 200.000. Riwayat sesi di halaman Sesi kas menampilkan "+ tambahan Rp 200.000". | | |
+| UMM-13 | Tutup sesi dengan uang fisik = saldo kas seharusnya (S + Rp 200.000). | Tanda **Cocok**, sesi ditutup tanpa selisih. Tombol **Tambah modal** dan ikon hapus tidak tampil lagi; rincian tambahan modal tetap terlihat. | | |
 
 ---
 
@@ -714,9 +718,9 @@ Butuh tiga jendela: **browser 1** (`PC Uji 1`), **browser 2** (`PC Uji 2`), dan 
 | 21. Autodebet | 16 | | | |
 | 22. Log aktivitas | 8 | | | |
 | 23. Hak akses | 10 | | | |
-| 24. Uji umum & ketahanan | 9 | | | |
+| 24. Uji umum & ketahanan | 13 | | | |
 | 25. Komputer terdaftar | 11 | | | |
-| **Total** | **275** | | | |
+| **Total** | **279** | | | |
 
 **Daftar bug ditemukan**
 

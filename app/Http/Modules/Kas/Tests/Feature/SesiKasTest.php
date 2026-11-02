@@ -308,3 +308,109 @@ it('laporan kas harian memuat teller piket dan jam hadirnya', function () {
 
     Excel::assertDownloaded('kas_harian_2026-10-30.xlsx', fn (LaporanExport $export) => in_array(['', 'Teller piket', 'Budi Santoso (X TKJ 1), hadir 07.05'], $export->array(), true));
 });
+
+it('teller dan bendahara mencatat tambahan modal sehingga saldo seharusnya bertambah', function () {
+    $sesi = $this->sesi->buka(100000, [$this->piket->id], $this->teller);
+    app(TransaksiService::class)->tarik($this->rekening, 90000, $this->teller);
+
+    $this->actingAs($this->bendahara)
+        ->post("/kas/sesi/{$sesi->id}/tambahan", ['nominal' => 200000, 'keterangan' => 'Uang dari brankas bendahara'])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('success', 'Tambahan modal Rp 200.000 dicatat.');
+
+    $this->actingAs($this->teller)
+        ->post("/kas/sesi/{$sesi->id}/tambahan", ['nominal' => 50000, 'keterangan' => 'Tambahan kedua'])
+        ->assertSessionHasNoErrors();
+
+    $rekap = $this->sesi->rekap('2026-10-30');
+
+    expect($rekap['modal_awal'])->toBe('100000.00')
+        ->and($rekap['total_tambahan_modal'])->toBe('250000.00')
+        ->and($rekap['saldo_akhir'])->toBe('260000.00')
+        ->and(array_column($rekap['tambahan_modal'], 'keterangan'))->toBe(['Uang dari brankas bendahara', 'Tambahan kedua'])
+        ->and($rekap['tambahan_modal'][0]['petugas'])->toBe($this->bendahara->name);
+
+    $this->assertDatabaseHas('activity_log', ['log_name' => 'sesi_kas', 'description' => 'Tambahan modal dicatat']);
+
+    $this->actingAs($this->teller)->get('/kas/sesi')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rekap.total_tambahan_modal', '250000.00')
+            ->has('rekap.tambahan_modal', 2)
+            ->where('riwayat.data.0.total_tambahan', '250000.00'));
+
+    // Uang fisik sesuai hitungan nyata → tidak ada selisih palsu.
+    $this->sesi->tutup($sesi, 260000, null, $this->teller);
+
+    expect($sesi->fresh())->saldo_sistem->toBe('260000.00')->selisih->toBe('0.00');
+});
+
+it('tambahan modal ditolak bila sesi ditutup, nominal tidak positif, atau tanpa keterangan', function () {
+    $sesi = $this->sesi->buka(100000, [$this->piket->id], $this->teller);
+
+    $this->actingAs($this->teller)->post("/kas/sesi/{$sesi->id}/tambahan", ['nominal' => 0, 'keterangan' => 'x'])
+        ->assertSessionHasErrors('nominal');
+    $this->actingAs($this->teller)->post("/kas/sesi/{$sesi->id}/tambahan", ['nominal' => 1000, 'keterangan' => ''])
+        ->assertSessionHasErrors('keterangan');
+    expect(fn () => $this->sesi->tambahModal($sesi, '-5', 'x'))->toThrow(ValidationException::class);
+
+    $this->sesi->tutup($sesi, 100000);
+
+    $this->actingAs($this->teller)->post("/kas/sesi/{$sesi->id}/tambahan", ['nominal' => 1000, 'keterangan' => 'Terlambat'])
+        ->assertSessionHasErrors(['sesi' => 'Sesi kas tanggal 30 Oktober 2026 sudah ditutup.']);
+
+    expect($sesi->tambahan()->count())->toBe(0);
+});
+
+it('tambahan modal yang salah catat bisa dihapus selama sesi terbuka', function () {
+    $sesi = $this->sesi->buka(100000, [$this->piket->id], $this->teller);
+    $salah = $this->sesi->tambahModal($sesi, 1000000, 'Salah ketik', $this->teller);
+    $benar = $this->sesi->tambahModal($sesi, 100000, 'Dari brankas', $this->teller);
+
+    $this->actingAs($this->teller)->delete("/kas/sesi/{$sesi->id}/tambahan/{$salah->id}")
+        ->assertSessionHas('success', 'Tambahan modal Rp 1.000.000 dihapus.');
+
+    expect($this->sesi->rekap('2026-10-30')['saldo_akhir'])->toBe('200000.00');
+    $this->assertDatabaseHas('activity_log', ['log_name' => 'sesi_kas', 'description' => 'Tambahan modal dihapus']);
+
+    // Tambahan milik sesi lain tidak bisa dihapus lewat sesi ini.
+    $this->sesi->tutup($sesi, 200000);
+    $this->pengaturan->set('tanggal_transaksi', '2026-10-31');
+    $lain = app(SesiKasService::class)->buka(0, [$this->piket->id], $this->teller);
+
+    $this->actingAs($this->teller)->delete("/kas/sesi/{$lain->id}/tambahan/{$benar->id}")->assertNotFound();
+
+    // Setelah sesi ditutup, tambahan tidak bisa dihapus.
+    $this->actingAs($this->teller)->delete("/kas/sesi/{$sesi->id}/tambahan/{$benar->id}")
+        ->assertSessionHasErrors('sesi');
+    expect($benar->fresh())->not->toBeNull();
+});
+
+it('hanya petugas berizin sesi kas yang bisa mencatat tambahan modal', function () {
+    $sesi = $this->sesi->buka(100000, [$this->piket->id], $this->teller);
+
+    $this->actingAs(userWithRole('admin'))
+        ->post("/kas/sesi/{$sesi->id}/tambahan", ['nominal' => 1000, 'keterangan' => 'x'])
+        ->assertForbidden();
+});
+
+it('laporan kas harian, Excel, dan dashboard memuat tambahan modal', function () {
+    $sesi = $this->sesi->buka(100000, [$this->piket->id], $this->teller);
+    $this->sesi->tambahModal($sesi, 200000, 'Dari brankas', $this->bendahara);
+    app(TransaksiService::class)->tarik($this->rekening, 90000, $this->teller);
+
+    $this->actingAs($this->teller)->get('/laporan/harian?tanggal=2026-10-30')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('data.total_tambahan_modal', '200000.00')
+            ->where('data.tambahan_modal.0.keterangan', 'Dari brankas')
+            ->where('data.saldo_akhir', '210000.00'));
+
+    Excel::fake();
+    $this->actingAs($this->teller)->get('/laporan/harian/excel?tanggal=2026-10-30');
+    Excel::assertDownloaded('kas_harian_2026-10-30.xlsx', fn (LaporanExport $export) => in_array(['', 'Total tambahan modal', 200000.0], $export->array(), true)
+        && in_array(['', 'Saldo kas akhir', 210000.0], $export->array(), true));
+
+    $this->actingAs($this->teller)->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('ringkasan.0.label', 'Saldo kas hari ini')
+            ->where('ringkasan.0.nilai', '210000.00'));
+});

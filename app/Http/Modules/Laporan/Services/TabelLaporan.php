@@ -181,6 +181,16 @@ class TabelLaporan
 
         $this->tambah(['', 'Modal awal', (float) $data['modal_awal']], true);
 
+        if ($data['tambahan_modal'] ?? []) {
+            $this->tambah(['TAMBAHAN MODAL'], true);
+
+            foreach ($data['tambahan_modal'] as $item) {
+                $this->tambah([$item['waktu'], $item['keterangan'].($item['petugas'] ? " ({$item['petugas']})" : ''), (float) $item['nominal']]);
+            }
+
+            $this->tambah(['', 'Total tambahan modal', (float) $data['total_tambahan_modal']], true);
+        }
+
         foreach (['pemasukan' => 'PEMASUKAN', 'pengeluaran' => 'PENGELUARAN'] as $kunci => $judul) {
             $this->tambah([$judul], true);
 
