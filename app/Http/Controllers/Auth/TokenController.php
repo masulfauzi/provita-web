@@ -18,6 +18,7 @@ class TokenController extends Controller
         $request->validate(['device_name' => ['required', 'string', 'max:100']]);
 
         $user = $request->validateCredentials();
+        $request->pastikanPerangkat($user);
 
         return response()->json([
             'token' => $user->createToken($request->string('device_name'))->plainTextToken,

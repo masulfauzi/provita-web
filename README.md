@@ -54,6 +54,15 @@ Buka http://localhost:8000, lalu login dengan username `bendahara` atau `teller`
 
 Peran & permission dideklarasikan di `config/permissions.php` dan `module.json` tiap modul, lalu disinkronkan dengan `php artisan permission:sync-modules`.
 
+### Komputer terdaftar (teller)
+
+Akun **teller** hanya bisa login dan bertransaksi dari komputer yang didaftarkan bendahara; bendahara dan admin bebas login dari mana saja. Cara mendaftarkan: bendahara login **di komputer teller**, buka **Sistem → Perangkat**, isi nama (mis. "PC Teller 1"), lalu klik **Daftarkan komputer ini**.
+
+- Browser komputer tersebut menyimpan token acak di cookie `provita_perangkat` (terenkripsi, httpOnly, ±5 tahun); database hanya menyimpan hash SHA-256-nya.
+- Diperiksa saat login **dan setiap request**: bila perangkat dinonaktifkan/dihapus atau cookie hilang, teller langsung dikeluarkan. Percobaan dari komputer tak terdaftar tercatat di Log Aktivitas (log `perangkat`).
+- Menghapus data browser, mengganti browser, atau mode penyamaran (incognito) = harus didaftarkan ulang.
+- Pembatasan bisa dimatikan untuk pengembangan dengan `PERANGKAT_WAJIB=false` (test memakai nilai ini; test modul Perangkat menyalakannya sendiri). **Jangan matikan di production.**
+
 ## Perintah penting
 
 | Perintah | Fungsi |

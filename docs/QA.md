@@ -29,7 +29,8 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 22. [Log aktivitas](#22-log-aktivitas)
 23. [Hak akses per peran](#23-hak-akses-per-peran)
 24. [Uji umum & ketahanan](#24-uji-umum--ketahanan)
-25. [Ringkasan hasil](#25-ringkasan-hasil)
+25. [Komputer terdaftar](#25-komputer-terdaftar)
+26. [Ringkasan hasil](#26-ringkasan-hasil)
 
 ---
 
@@ -42,7 +43,7 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 3. Kata sandi akun bawaan **bendahara** dan **teller**.
 4. *(Opsional)* Satu NISN siswa yang **benar-benar ada** di data siswa sekolah, untuk menguji pengisian otomatis dari API sekolah.
 
-Tester sebaiknya memakai **dua browser berbeda** (misalnya Chrome dan Firefox, atau satu jendela biasa dan satu jendela penyamaran) supaya bisa login sebagai dua pengguna sekaligus.
+Tester sebaiknya memakai **dua browser berbeda** (misalnya Chrome dan Firefox) supaya bisa login sebagai dua pengguna sekaligus. Jangan memakai jendela penyamaran (incognito) untuk login teller: teller hanya bisa login dari browser yang sudah didaftarkan (lihat 0.6), dan pendaftaran di jendela penyamaran hilang begitu jendela ditutup.
 
 ### 0.2 Akun uji
 
@@ -99,6 +100,17 @@ Semua transaksi dilakukan pada **satu tanggal transaksi**, yaitu tanggal hari pe
 - Teks dalam tanda kutip pada kolom harapan adalah **pesan yang harus muncul persis** (huruf besar-kecil dan tanda baca boleh diabaikan).
 - Pesan sukses muncul sebagai kotak notifikasi hijau di pojok layar. Pesan gagal muncul merah, atau sebagai tulisan merah di bawah kolom isian.
 
+### 0.6 Mendaftarkan browser uji (wajib sebelum bagian 1)
+
+Akun teller hanya bisa login dari komputer (browser) yang didaftarkan bendahara. Lakukan langkah ini di **kedua** browser uji:
+
+1. Login sebagai `bendahara`.
+2. Buka menu **Sistem → Perangkat**.
+3. Isi nama komputer: `PC Uji 1` untuk browser pertama, `PC Uji 2` untuk browser kedua. Klik **Daftarkan komputer ini**.
+4. Pastikan muncul "Komputer ini terdaftar sebagai …", lalu klik avatar → **Keluar**.
+
+Jika browser dihapus datanya (clear cookies/riwayat), teller tidak bisa login lagi di browser itu. Ulangi langkah di atas.
+
 ### 0.5 Perilaku yang memang begitu (bukan bug)
 
 - Belum ada fitur **cetak struk setor/tarik**. Buku tabungan dicetak lewat tombol **Cetak buku** di halaman rekening (bagian 12); bila tidak ada printer buku tabungan, pilih "Simpan sebagai PDF" di dialog cetak browser.
@@ -107,6 +119,7 @@ Semua transaksi dilakukan pada **satu tanggal transaksi**, yaitu tanggal hari pe
 - Tidak ada akun admin bawaan. Akun admin dibuat sendiri di bagian 3.
 - Setoran, penarikan, dan bukti kas tidak bisa diubah atau dihapus. Kesalahan diperbaiki dengan **koreksi** atau **pembatalan**, yang membuat transaksi pembalik.
 - "Saldo kas hari ini" di Dashboard dan "saldo kas seharusnya" di Sesi kas berbeda dengan "Saldo kas" di Laporan keuangan. Dashboard dan Sesi kas memakai *modal awal sesi kas* (uang tunai di laci teller), sedangkan Laporan keuangan menghitung dari jurnal pembukuan.
+- Teller hanya bisa login dari browser yang terdaftar di menu **Perangkat**; bendahara dan admin bisa login dari browser mana saja.
 - Semua petugas (teller maupun bendahara) hanya bisa setor, tarik, koreksi, buka/tutup rekening, serta mencatat dan membatalkan penerimaan/pengeluaran kas selama **sesi kas** tanggal transaksi terbuka. Jurnal umum tidak terpengaruh.
 
 ---
@@ -617,6 +630,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | Laporan → Laporan keuangan | tampil | **tidak** | tampil |
 | Sistem → Pengaturan | tampil | tampil | tampil |
 | Sistem → Pengguna | **tidak** | tampil | tampil |
+| Sistem → Perangkat | **tidak** | **tidak** | tampil |
 | Sistem → Log aktivitas | **tidak** | **tidak** | tampil |
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
@@ -624,8 +638,8 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | HAK-01 | Login `teller`, cocokkan menu dengan tabel 23.1. | Sesuai kolom teller. | | |
 | HAK-02 | Login `admin1` (`Rahasia123`), cocokkan menu. | Sesuai kolom admin1. | | |
 | HAK-03 | Login `bendahara`, cocokkan menu. Buka **Pinjaman**. | Sesuai kolom bendahara. Pinjaman menampilkan halaman segera hadir. | | |
-| HAK-04 | Sebagai `teller`, ketik langsung di alamat browser: `/jurnal`, `/akun`, `/pengguna`, `/log-aktivitas`, `/jenis-rekening`, `/pinjaman`. | Setiap alamat menampilkan halaman **403 / tidak punya akses**, bukan isi halaman. | | |
-| HAK-05 | Sebagai `admin1`, ketik `/rekening`, `/nasabah`, `/transaksi`, `/kas/penerimaan`, `/kas/sesi`, `/laporan`, `/laporan/harian`, `/autodebet`. | Semua 403. Tanda sesi kas tidak tampil di bagian atas. | | |
+| HAK-04 | Sebagai `teller`, ketik langsung di alamat browser: `/jurnal`, `/akun`, `/pengguna`, `/log-aktivitas`, `/jenis-rekening`, `/pinjaman`, `/perangkat`. | Setiap alamat menampilkan halaman **403 / tidak punya akses**, bukan isi halaman. | | |
+| HAK-05 | Sebagai `admin1`, ketik `/rekening`, `/nasabah`, `/transaksi`, `/kas/penerimaan`, `/kas/sesi`, `/laporan`, `/laporan/harian`, `/autodebet`, `/perangkat`. | Semua 403. Tanda sesi kas tidak tampil di bagian atas. | | |
 | HAK-06 | Sebagai `teller`, buka Pengaturan. | Kartu **Operasional harian** bisa diubah. Kartu **Keuangan** dan **Umum** bertanda **Hanya lihat**, isian abu-abu, tanpa tombol Simpan. | | |
 | HAK-07 | Sebagai `admin1`, buka Pengaturan. | Kartu **Umum** bisa diubah; **Operasional harian** dan **Keuangan** hanya lihat. | | |
 | HAK-08 | Sebagai `admin1`, buka Jenis Rekening dan Pengguna. Tambah, ubah, reset kata sandi tersedia. | Bisa dipakai seperti bendahara. | | |
@@ -652,7 +666,27 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 
 ---
 
-## 25. Ringkasan hasil
+## 25. Komputer terdaftar
+
+Butuh tiga jendela: **browser 1** (`PC Uji 1`), **browser 2** (`PC Uji 2`), dan satu **jendela penyamaran (incognito)** baru yang belum terdaftar. Kata sandi teller adalah `Teller2026` (dari AUTH-16).
+
+| ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
+| --- | --- | --- | --- | --- |
+| PRK-01 | Browser 1: login `bendahara`, buka **Sistem → Perangkat**. | Kartu **Komputer ini** hijau: "Terdaftar sebagai PC Uji 1". Tabel berisi PC Uji 1 (bertanda **Komputer ini**) dan PC Uji 2, keduanya **Aktif**, dengan waktu terakhir dipakai, IP, tanggal daftar, dan nama Bendahara. | | |
+| PRK-02 | Jendela penyamaran: login `teller`. | Ditolak: "Komputer ini belum terdaftar untuk teller. Hubungi bendahara." Tetap di halaman login. | | |
+| PRK-03 | Jendela penyamaran: login `bendahara`. | Berhasil masuk ke Dashboard (bendahara tidak dibatasi). Buka Perangkat: kartu kuning "Browser ini belum terdaftar". | | |
+| PRK-04 | Jendela penyamaran (masih `bendahara`): isi nama `PC Sementara`, klik **Daftarkan komputer ini**. Keluar, lalu login `teller`. | Pendaftaran berhasil; teller berhasil masuk di jendela ini. Keluar lagi. | | |
+| PRK-05 | Jendela penyamaran: login `admin1`. | Berhasil masuk (admin tidak dibatasi). Menu Perangkat tidak tampil. Keluar. | | |
+| PRK-06 | Browser 1 (`bendahara`), Perangkat: klik ikon pensil pada **PC Uji 2**, ubah nama menjadi `PC Teller Depan`, Simpan. Lalu coba simpan dengan nama kosong. | "Nama komputer diperbarui." Nama di tabel berubah. Nama kosong ditolak dengan pesan wajib diisi. | | |
+| PRK-07 | Browser 2: login `teller`. Browser 1: klik **Nonaktifkan** (ikon larangan) pada PC Teller Depan. Browser 2: klik menu mana saja. | Browser 1: "PC Teller Depan dinonaktifkan…", status **Nonaktif**. Browser 2: teller langsung dikeluarkan ke halaman login dengan kotak merah "Komputer ini belum terdaftar untuk teller. Hubungi bendahara." | | |
+| PRK-08 | Browser 2: coba login `teller` lagi. | Ditolak dengan pesan yang sama. | | |
+| PRK-09 | Browser 1: klik **Aktifkan** pada PC Teller Depan. Browser 2: login `teller`. | Status kembali **Aktif**; teller berhasil masuk di browser 2. | | |
+| PRK-10 | Browser 1: hapus **PC Sementara** (ikon tempat sampah → **Hapus**). Jendela penyamaran: login `teller`. | PC Sementara hilang dari tabel. Teller ditolak di jendela penyamaran. Tutup jendela penyamaran. | | |
+| PRK-11 | Browser 1 (`bendahara`): buka **Sistem → Log aktivitas**. | Ada catatan "Teller ditolak: komputer tidak terdaftar" untuk percobaan PRK-02, PRK-07/08, dan PRK-10, serta perubahan perangkat (ubah nama, nonaktif/aktif). | | |
+
+---
+
+## 26. Ringkasan hasil
 
 | Bagian | Jumlah skenario | ✅ | ❌ | ⏭️ |
 | --- | --- | --- | --- | --- |
@@ -680,7 +714,8 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 22. Log aktivitas | 8 | | | |
 | 23. Hak akses | 10 | | | |
 | 24. Uji umum & ketahanan | 9 | | | |
-| **Total** | **264** | | | |
+| 25. Komputer terdaftar | 11 | | | |
+| **Total** | **275** | | | |
 
 **Daftar bug ditemukan**
 

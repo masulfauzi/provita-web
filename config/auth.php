@@ -114,4 +114,19 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Perangkat terdaftar
+    |--------------------------------------------------------------------------
+    |
+    | Bila aktif, akun teller hanya bisa login dan bertransaksi dari komputer
+    | yang didaftarkan bendahara di menu Perangkat. Matikan hanya untuk
+    | pengembangan/test (PERANGKAT_WAJIB=false).
+    |
+    */
+
+    'perangkat' => [
+        'wajib' => (bool) env('PERANGKAT_WAJIB', true),
+    ],
+
 ];

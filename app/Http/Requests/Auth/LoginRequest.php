@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Modules\Perangkat\Services\PerangkatService;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
@@ -65,7 +66,29 @@ class LoginRequest extends FormRequest
 
     public function authenticate(): void
     {
-        Auth::login($this->validateCredentials(), $this->boolean('remember'));
+        $user = $this->validateCredentials();
+
+        $this->pastikanPerangkat($user);
+
+        Auth::login($user, $this->boolean('remember'));
+    }
+
+    /**
+     * Teller hanya boleh login dari komputer yang didaftarkan bendahara.
+     *
+     * @throws ValidationException
+     */
+    public function pastikanPerangkat(User $user): void
+    {
+        $perangkat = app(PerangkatService::class);
+
+        if ($perangkat->diizinkan($user, $this)) {
+            return;
+        }
+
+        $perangkat->catatDitolak($user, $this);
+
+        throw ValidationException::withMessages(['username' => PerangkatService::PESAN_DITOLAK]);
     }
 
     /**

@@ -3,6 +3,7 @@ import { Head, useForm, usePage } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import InputText from 'primevue/inputtext';
+import Message from 'primevue/message';
 import Password from 'primevue/password';
 import FieldError from '@/Components/FieldError.vue';
 
@@ -29,6 +30,10 @@ function submit() {
     </div>
 
     <form class="card flex flex-col gap-5" @submit.prevent="submit">
+        <Message v-if="page.props.flash?.error" severity="error" :closable="false">{{
+            page.props.flash.error
+        }}</Message>
+
         <div class="flex flex-col gap-2">
             <label for="username" class="font-medium">Nama pengguna</label>
             <InputText

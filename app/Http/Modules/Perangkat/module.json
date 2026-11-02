@@ -1,0 +1,13 @@
+{
+    "name": "Perangkat",
+    "label": "Perangkat",
+    "icon": "pi pi-desktop",
+    "order": 905,
+    "menu": [
+        { "label": "Perangkat", "route": "perangkat.index", "permission": "perangkat.lihat", "group": "Sistem" }
+    ],
+    "permissions": {
+        "perangkat.lihat": { "label": "Lihat komputer terdaftar", "roles": [] },
+        "perangkat.kelola": { "label": "Mendaftarkan & menonaktifkan komputer teller", "roles": [] }
+    }
+}
