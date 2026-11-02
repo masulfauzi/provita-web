@@ -31,6 +31,8 @@ function cariKelas(event) {
 
 const hariIni = new Date();
 const isSiswa = computed(() => props.form.jenis === 'siswa');
+// Lembaga bukan perorangan: isian identitas pribadi disembunyikan.
+const isLembaga = computed(() => props.form.jenis === 'lembaga');
 
 // Hasil pemeriksaan NISN terakhir; hanya berlaku selama NISN di form tidak diubah.
 const hasil = ref(null);
@@ -100,16 +102,24 @@ function terimaHasil(value) {
 
             <div v-if="terbuka" class="mt-5 grid gap-5 md:grid-cols-2">
                 <div class="flex flex-col gap-2">
-                    <label for="nama" class="font-medium">Nama lengkap</label>
-                    <InputText id="nama" v-model="form.nama" :invalid="!!form.errors.nama" />
+                    <label for="nama" class="font-medium">{{ isLembaga ? 'Nama lembaga' : 'Nama lengkap' }}</label>
+                    <InputText
+                        id="nama"
+                        v-model="form.nama"
+                        :placeholder="isLembaga ? 'mis. OSIS SMKN 2 Semarang' : undefined"
+                        :invalid="!!form.errors.nama"
+                    />
                     <FieldError :message="form.errors.nama" />
                 </div>
-                <div class="flex flex-col gap-2">
+                <p v-if="isLembaga" class="self-end text-sm text-muted-color">
+                    <i class="pi pi-info-circle" /> Nomor rekening lembaga dibuat otomatis dari nomor nasabah.
+                </p>
+                <div v-if="!isLembaga" class="flex flex-col gap-2">
                     <label for="nis" class="font-medium">{{ isSiswa ? 'NIS' : 'NIP / No. pegawai' }}</label>
                     <InputText id="nis" v-model="form.nis" :invalid="!!form.errors.nis" />
                     <FieldError :message="form.errors.nis" />
                 </div>
-                <div class="flex flex-col gap-2">
+                <div v-if="!isLembaga" class="flex flex-col gap-2">
                     <label for="nik" class="font-medium">NIK</label>
                     <InputText
                         id="nik"
@@ -121,7 +131,7 @@ function terimaHasil(value) {
                     />
                     <FieldError :message="form.errors.nik" />
                 </div>
-                <div class="flex flex-col gap-2">
+                <div v-if="!isLembaga" class="flex flex-col gap-2">
                     <label for="jenis_kelamin" class="font-medium">Jenis kelamin</label>
                     <Select
                         v-model="form.jenis_kelamin"
@@ -147,12 +157,12 @@ function terimaHasil(value) {
                     />
                     <FieldError :message="form.errors.kelas" />
                 </div>
-                <div class="flex flex-col gap-2">
+                <div v-if="!isLembaga" class="flex flex-col gap-2">
                     <label for="tempat_lahir" class="font-medium">Tempat lahir</label>
                     <InputText id="tempat_lahir" v-model="form.tempat_lahir" :invalid="!!form.errors.tempat_lahir" />
                     <FieldError :message="form.errors.tempat_lahir" />
                 </div>
-                <div class="flex flex-col gap-2">
+                <div v-if="!isLembaga" class="flex flex-col gap-2">
                     <label for="tanggal_lahir" class="font-medium">Tanggal lahir</label>
                     <DatePicker
                         v-model="form.tanggal_lahir"

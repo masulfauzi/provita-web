@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('nisn', 10)->nullable()->unique();
             $table->string('nik', 16)->nullable()->unique();
             $table->string('nama')->index();
-            $table->string('jenis', 20)->default('siswa'); // siswa | guru | karyawan
-            $table->char('jenis_kelamin', 1); // L | P
+            $table->string('jenis', 20)->default('siswa'); // siswa | guru | karyawan | lembaga
+            $table->char('jenis_kelamin', 1)->nullable(); // L | P; kosong untuk lembaga
             $table->string('kelas', 30)->nullable()->index();
             $table->string('tempat_lahir', 100)->nullable();
             $table->date('tanggal_lahir')->nullable();

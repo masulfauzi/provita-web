@@ -20,10 +20,15 @@ class Nasabah extends Model
     /** @use HasFactory<NasabahFactory> */
     use HasFactory, HasUuids, LogsActivity;
 
+    public const LEMBAGA = 'lembaga';
+
     public const JENIS = [
         'siswa' => 'Siswa',
         'guru' => 'Guru',
         'karyawan' => 'Karyawan',
+        // Bukan perorangan (OSIS, koperasi, dll.): tanpa jenis kelamin/NIS/NIK/data lahir;
+        // nomor rekening dibuat dari nomor nasabah.
+        self::LEMBAGA => 'Lembaga',
     ];
 
     public const JENIS_KELAMIN = [
@@ -70,6 +75,11 @@ class Nasabah extends Model
     public function rekening(): HasMany
     {
         return $this->hasMany(Rekening::class);
+    }
+
+    public function isLembaga(): bool
+    {
+        return $this->jenis === self::LEMBAGA;
     }
 
     public function getActivitylogOptions(): LogOptions

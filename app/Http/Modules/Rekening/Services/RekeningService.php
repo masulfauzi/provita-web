@@ -139,6 +139,11 @@ class RekeningService
      */
     public function nomorDasar(Nasabah $nasabah): string
     {
+        // Lembaga: angka dari nomor nasabah, mis. NSB-000123 -> 000123.
+        if ($nasabah->isLembaga()) {
+            return preg_replace('/\D/', '', (string) $nasabah->nomor);
+        }
+
         $siswa = $nasabah->jenis === 'siswa';
         $dasar = preg_replace('/\D/', '', (string) ($siswa ? ($nasabah->nisn ?: $nasabah->nis) : $nasabah->nis));
 

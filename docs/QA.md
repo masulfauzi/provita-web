@@ -67,6 +67,7 @@ Semua transaksi dilakukan pada **satu tanggal transaksi**, yaitu tanggal hari pe
 | NSB-000004 | Eko Saputra | Karyawan | (kosong) | – | NSB-09 |
 | NSB-000005 | Fajar Nugroho | Siswa | NISN `9999999905` | X TKJ 1 | NSB-10 (nanti dihapus) |
 | NSB-000006 | (nama dari API) | Siswa | NISN asli dari sekolah | dari API | NSB-12 *(opsional)* |
+| NSB-000007 (atau 000006 bila NSB-12 dilewati) | OSIS SMKN 2 Semarang | Lembaga | – (nomor rekening dari nomor nasabah) | – | NSB-19 |
 
 > Bila NISN `99999999xx` ternyata ditemukan di data sekolah, ganti dengan angka lain berawalan `99999999` dan catat nomor penggantinya. Nomor rekening di bawah ikut berubah.
 
@@ -221,6 +222,7 @@ Login sebagai `teller` (kata sandi `Teller2026`). Menu **Data Master → Nasabah
 | NSB-16 | Sebagai teller, buka detail Fajar. | Tombol **Nonaktifkan** dan **Hapus** **tidak tampil** untuk teller. | | |
 | NSB-17 | Login sebagai `bendahara`. Buka Fajar → **Nonaktifkan**. | Konfirmasi "Nasabah Fajar Nugroho tidak akan bisa bertransaksi sampai diaktifkan kembali. Lanjutkan?" → "Nasabah Fajar Nugroho dinonaktifkan." Tombol **Buka rekening** tidak tampil di detail Fajar. | | |
 | NSB-18 | Filter status **nonaktif** di daftar nasabah. | Hanya Fajar. | | |
+| NSB-19 | **Lembaga:** login `teller`, tambah nasabah, pilih jenis **Lembaga**. Isi Nama lembaga `OSIS SMKN 2 Semarang`, Nomor HP `081234567890`. Simpan. Lalu filter jenis **Lembaga** di daftar nasabah. | Setelah memilih Lembaga, isian NIS/NIP, NIK, Jenis kelamin, Tempat/Tanggal lahir **hilang**; label menjadi "Nama lembaga" dengan info "Nomor rekening lembaga dibuat otomatis dari nomor nasabah." Tersimpan dengan nomor NSB berikutnya. Detail nasabah tidak menampilkan baris identitas pribadi. Filter Lembaga hanya menampilkan OSIS. | | |
 
 ---
 
@@ -334,7 +336,7 @@ Login sebagai `teller`.
 | TUP-05 | Di Setor / Tarik, cari `9999999902` dan `99999999011`. | Rekening yang ditutup tidak muncul di pencarian. | | |
 | TUP-06 | Daftar rekening, filter status **Ditutup**. | R3 dan R4. | | |
 | TUP-07 | Login `bendahara`, buka buku tabungan R4. | Tidak ada tombol Koreksi (rekening sudah ditutup). | | |
-| TUP-08 | Buka **Data Master → Nasabah** dan lihat kolom **Total saldo**. | Budi **Rp 325.000** (3 rekening: 275.000 + 50.000 + 0), Citra Rp 0 (1 rekening, ditutup), Dedi **Rp 50.000** (1 rekening), Eko Rp 0 "Belum ada rekening". | | |
+| TUP-08 | Buka **Data Master → Nasabah** dan lihat kolom **Total saldo**. | Budi **Rp 325.000** (3 rekening: 275.000 + 50.000 + 0), Citra Rp 0 (1 rekening, ditutup), Dedi **Rp 50.000** (1 rekening), Eko dan OSIS Rp 0 "Belum ada rekening". | | |
 
 ---
 
@@ -498,7 +500,7 @@ Login sebagai `teller`. Menu **Dashboard**.
 | DSB-03 | Kartu **Setoran hari ini**. | **Rp 800.000**, 9 transaksi. | | |
 | DSB-04 | Kartu **Penarikan hari ini**. | **Rp 407.000**, 5 transaksi (termasuk penutupan R3 Rp 15.000). | | |
 | DSB-05 | Kartu **Total saldo tabungan**. | **Rp 375.000**, 3 rekening aktif. | | |
-| DSB-06 | Kartu **Nasabah aktif**. | **4** (Budi, Citra, Dedi, Eko), atau **5** bila NSB-12 dikerjakan. | | |
+| DSB-06 | Kartu **Nasabah aktif**. | **5** (Budi, Citra, Dedi, Eko, OSIS), atau **6** bila NSB-12 dikerjakan. | | |
 | DSB-07 | Klik kartu Saldo kas hari ini, Total saldo tabungan, lalu Nasabah aktif. | Membuka halaman Sesi kas, daftar Rekening, dan daftar Nasabah. | | |
 | DSB-08 | **Ganti tanggal:** Pengaturan → Tanggal transaksi aktif = besok (T+1). Simpan, lalu buka Dashboard. | Tanggal di bagian atas berubah dan tanda menjadi **Sesi kas belum dibuka**. Setoran dan Penarikan hari ini Rp 0; Saldo kas hari ini Rp 0 dengan catatan "Sesi kas belum dibuka"; Total saldo tabungan tetap Rp 375.000. | | |
 | DSB-08a | Masih T+1, buka **Kas → Sesi kas**. | Yang tampil adalah sesi tanggal **T** (masih terbuka) dengan peringatan bahwa sesi ini belum ditutup sedangkan tanggal transaksi sudah berganti. Form buka sesi baru **tidak** tampil. Jangan tutup sesi dulu. | | |
@@ -646,6 +648,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | UMM-06 | **Dua teller bersamaan:** `teller` (browser 1) dan `teller2` (browser 2) menyiapkan penarikan R2 (saldo Rp 100.000) masing-masing `60.000` sampai dialog konfirmasi, lalu konfirmasi hampir bersamaan. | Hanya **satu** penarikan berhasil. Yang lain: "Saldo tidak cukup. Saldo Rp 40.000, penarikan Rp 60.000." Saldo R2 tidak pernah minus. | | |
 | UMM-07 | **Nominal besar & desimal:** setor R1 `1.500,50`. | Diterima, saldo dan terbilang menampilkan desimal dengan benar (koma), atau isian tidak mengizinkan desimal; catat perilakunya. | | |
 | UMM-08 | Muat ulang (F5) di tengah halaman mana pun. | Halaman tampil kembali normal, tetap login. | | |
+| UMM-09 | **Rekening lembaga:** buka detail OSIS (NSB-19) → **Buka rekening**, jenis Tabungan Pelajar, setoran awal `50.000`. Lalu buka rekening OSIS lagi dengan jenis **Tabungan Wisata**. | Nomor rekening = angka dari nomor nasabah OSIS, mis. NSB-000007 → **000007**; rekening Wisata → **41000007**. Tidak diminta NIS/NIP. | | |
 
 ---
 
@@ -657,7 +660,7 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 2. Pengaturan | 7 | | | |
 | 3. Pengguna | 15 | | | |
 | 4. Jenis rekening | 10 | | | |
-| 5. Nasabah | 19 | | | |
+| 5. Nasabah | 20 | | | |
 | 6. Daftar siswa | 8 | | | |
 | 7. Sesi kas (buka) | 7 | | | |
 | 8. Buka rekening | 17 | | | |
@@ -676,8 +679,8 @@ Login bergantian sebagai `teller`, `admin1`, dan `bendahara`. Beri ✅ bila sesu
 | 21. Autodebet | 16 | | | |
 | 22. Log aktivitas | 8 | | | |
 | 23. Hak akses | 10 | | | |
-| 24. Uji umum & ketahanan | 8 | | | |
-| **Total** | **262** | | | |
+| 24. Uji umum & ketahanan | 9 | | | |
+| **Total** | **264** | | | |
 
 **Daftar bug ditemukan**
 

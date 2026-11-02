@@ -24,16 +24,17 @@ const confirm = useConfirm();
 
 const label = (options, value) => options.find((o) => o.value === value)?.label ?? value ?? '-';
 const isSiswa = computed(() => props.item.jenis === 'siswa');
+const isLembaga = computed(() => props.item.jenis === 'lembaga');
 
 const rincian = computed(() => [
     ['Nomor nasabah', props.item.nomor],
-    [isSiswa.value ? 'NIS' : 'NIP / No. pegawai', props.item.nis],
+    ...(isLembaga.value ? [] : [[isSiswa.value ? 'NIS' : 'NIP / No. pegawai', props.item.nis]]),
     ...(isSiswa.value ? [['NISN', props.item.nisn]] : []),
-    ['NIK', props.item.nik],
+    ...(isLembaga.value ? [] : [['NIK', props.item.nik]]),
     ['Jenis nasabah', label(props.jenisOptions, props.item.jenis)],
-    ['Jenis kelamin', label(props.jenisKelaminOptions, props.item.jenis_kelamin)],
+    ...(isLembaga.value ? [] : [['Jenis kelamin', label(props.jenisKelaminOptions, props.item.jenis_kelamin)]]),
     ...(isSiswa.value ? [['Kelas', props.item.kelas]] : []),
-    ['Tempat lahir', props.item.tempat_lahir],
+    ...(isLembaga.value ? [] : [['Tempat lahir', props.item.tempat_lahir]]),
     ['Nomor HP', props.item.no_hp],
     ['Email', props.item.email],
     ...(isSiswa.value ? [['Orang tua / wali', props.item.nama_orang_tua]] : []),
@@ -87,8 +88,10 @@ function toggleActive() {
             <dt class="text-muted-color">{{ judul }}</dt>
             <dd class="whitespace-pre-line">{{ nilai || '-' }}</dd>
         </template>
-        <dt class="text-muted-color">Tanggal lahir</dt>
-        <dd><DateText :value="item.tanggal_lahir" /></dd>
+        <template v-if="!isLembaga">
+            <dt class="text-muted-color">Tanggal lahir</dt>
+            <dd><DateText :value="item.tanggal_lahir" /></dd>
+        </template>
         <dt class="text-muted-color">Terdaftar</dt>
         <dd><DateText :value="item.created_at" /></dd>
     </dl>

@@ -36,7 +36,7 @@ it('teller melihat daftar nasabah', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Nasabah::Index')
             ->has('items.data', 3)
-            ->has('jenisOptions', 3));
+            ->has('jenisOptions', 4));
 });
 
 it('daftar nasabah menampilkan total saldo semua rekening', function () {
@@ -77,6 +77,37 @@ it('teller mendaftarkan nasabah dengan nomor otomatis berurutan', function () {
         ->and($siti->tanggal_lahir->toDateString())->toBe('2009-03-14')
         ->and(Nasabah::where('nama', 'Rina')->value('nomor'))->toBe('NSB-000002');
 });
+
+it('teller mendaftarkan lembaga tanpa identitas pribadi', function () {
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah([
+        'jenis' => 'lembaga',
+        'nama' => 'OSIS SMKN 2 Semarang',
+        'jenis_kelamin' => null,
+        // Isian perorangan yang ikut terkirim tetap dikosongkan.
+        'nis' => '99999',
+        'nik' => '3374010101090001',
+        'tempat_lahir' => 'Semarang',
+    ]))->assertSessionHasNoErrors()->assertRedirect();
+
+    expect(Nasabah::where('nama', 'OSIS SMKN 2 Semarang')->firstOrFail())
+        ->jenis->toBe('lembaga')
+        ->isLembaga()->toBeTrue()
+        ->jenis_kelamin->toBeNull()
+        ->nis->toBeNull()
+        ->nik->toBeNull()
+        ->tempat_lahir->toBeNull()
+        ->tanggal_lahir->toBeNull()
+        ->nisn->toBeNull()
+        ->kelas->toBeNull();
+
+    $this->actingAs($this->teller)->get('/nasabah?jenis=lembaga')
+        ->assertInertia(fn (Assert $page) => $page->has('items.data', 1)->where('items.data.0.nama', 'OSIS SMKN 2 Semarang'));
+});
+
+it('jenis kelamin tetap wajib untuk nasabah perorangan', function (string $jenis) {
+    $this->actingAs($this->teller)->post('/nasabah', dataNasabah(['jenis' => $jenis, 'jenis_kelamin' => null]))
+        ->assertSessionHasErrors('jenis_kelamin');
+})->with(['siswa', 'guru', 'karyawan']);
 
 it('teller mengubah data nasabah', function () {
     $nasabah = Nasabah::factory()->create();

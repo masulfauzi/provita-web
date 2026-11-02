@@ -31,7 +31,8 @@ function toDateString(date) {
 
 /**
  * Form nasabah (create/edit). Tanggal lahir di-convert Date <-> "YYYY-MM-DD",
- * dan kolom khusus siswa dikosongkan untuk guru/karyawan.
+ * kolom khusus siswa dikosongkan untuk guru/karyawan/lembaga, dan identitas pribadi
+ * (jenis kelamin, NIS/NIP, NIK, data lahir) dikosongkan untuk lembaga.
  */
 export function useNasabahForm(item = null) {
     const initial = Object.fromEntries(Object.keys(KOSONG).map((key) => [key, item?.[key] ?? KOSONG[key]]));
@@ -45,6 +46,9 @@ export function useNasabahForm(item = null) {
         nisn: data.jenis === 'siswa' ? data.nisn : null,
         kelas: data.jenis === 'siswa' ? data.kelas : null,
         nama_orang_tua: data.jenis === 'siswa' ? data.nama_orang_tua : null,
+        ...(data.jenis === 'lembaga'
+            ? { jenis_kelamin: null, nis: null, nik: null, tempat_lahir: null, tanggal_lahir: null }
+            : {}),
     }));
 
     return form;

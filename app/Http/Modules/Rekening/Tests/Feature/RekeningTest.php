@@ -177,6 +177,17 @@ it('menu tabungan tampil untuk teller', function () {
         });
 });
 
+it('nomor rekening lembaga diambil dari nomor nasabah', function () {
+    $osis = Nasabah::factory()->create(['jenis' => 'lembaga', 'nomor' => 'NSB-000123', 'nisn' => null, 'nis' => null, 'jenis_kelamin' => null]);
+    $wisata = JenisRekening::factory()->create(['nama' => 'Tabungan Wisata', 'prefix' => '41']);
+
+    bukaRekening(['nasabah_id' => $osis->id])->assertSessionHasNoErrors();
+    bukaRekening(['nasabah_id' => $osis->id])->assertSessionHasNoErrors();
+    bukaRekening(['nasabah_id' => $osis->id, 'jenis_rekening_id' => $wisata->id])->assertSessionHasNoErrors();
+
+    expect($osis->rekening()->orderBy('nomor')->pluck('nomor')->all())->toBe(['000123', '0001231', '41000123']);
+});
+
 it('nomor rekening = prefix jenis + NISN, dengan suffix urut bila sudah dipakai', function () {
     $wisata = JenisRekening::factory()->create(['nama' => 'Tabungan Wisata', 'prefix' => '2']);
 
