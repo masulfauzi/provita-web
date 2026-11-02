@@ -1,5 +1,5 @@
 <script setup>
-import { useForm, usePage } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import InputNumber from 'primevue/inputnumber';
@@ -13,8 +13,6 @@ const props = defineProps({
     title: { type: String, required: true },
     description: { type: String, default: null },
 });
-
-const page = usePage();
 
 function toDate(value) {
     if (!value) return null;
@@ -31,10 +29,8 @@ function toDateString(date) {
 function initialValue(item) {
     switch (item.tipe) {
         case 'tanggal':
-            // Tanggal transaksi yang belum diisi memakai tanggal aktif (hari ini) seperti di topbar.
-            return toDate(
-                item.nilai ?? (item.kunci === 'tanggal_transaksi' ? page.props.app?.tanggal_transaksi : null),
-            );
+            // Kosong dibiarkan kosong: tanggal transaksi kosong berarti mengikuti hari ini.
+            return toDate(item.nilai);
         case 'uang':
         case 'persen':
         case 'angka':
@@ -86,6 +82,7 @@ function submit() {
                     v-else-if="item.tipe === 'tanggal'"
                     v-model="form.nilai[item.kunci]"
                     :input-id="item.kunci"
+                    :placeholder="item.kunci === 'tanggal_transaksi' ? 'Kosong = mengikuti tanggal hari ini' : null"
                     date-format="dd MM yy"
                     show-icon
                     show-button-bar

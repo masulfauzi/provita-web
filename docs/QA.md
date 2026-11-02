@@ -116,6 +116,7 @@ Jika browser dihapus datanya (clear cookies/riwayat), teller tidak bisa login la
 - Belum ada fitur **cetak struk setor/tarik**. Buku tabungan dicetak lewat tombol **Cetak buku** di halaman rekening (bagian 12); bila tidak ada printer buku tabungan, pilih "Simpan sebagai PDF" di dialog cetak browser.
 - Menu **Pinjaman** masih bertuliskan segera hadir.
 - Belum ada saldo minimal mengendap: rekening boleh bersaldo Rp 0.
+- Tanggal transaksi aktif yang **kosong** di Pengaturan berarti otomatis mengikuti tanggal hari ini. Isian tidak terisi sendiri dengan tanggal hari ini.
 - Tidak ada akun admin bawaan. Akun admin dibuat sendiri di bagian 3.
 - Setoran, penarikan, dan bukti kas tidak bisa diubah atau dihapus. Kesalahan diperbaiki dengan **koreksi** atau **pembatalan**, yang membuat transaksi pembalik.
 - "Saldo kas hari ini" di Dashboard dan "saldo kas seharusnya" di Sesi kas berbeda dengan "Saldo kas" di Laporan keuangan. Dashboard dan Sesi kas memakai *modal awal sesi kas* (uang tunai di laci teller), sedangkan Laporan keuangan menghitung dari jurnal pembukuan.
@@ -163,7 +164,7 @@ Login sebagai `bendahara`. Menu **Sistem → Pengaturan**.
 | SET-04 | Kartu Keuangan: isi Biaya administrasi penutupan `-5000`, lalu Simpan. | Ditolak (tidak boleh negatif); bila kolom tidak bisa diisi minus, tandai ✅. | | |
 | SET-05 | Kartu Keuangan: isi Suku bunga `0`, Setoran awal minimal `10.000`, Biaya administrasi penutupan `5.000`, Harga buku tabungan `15.000`, Bunga minimal `0`. Simpan. | "Pengaturan berhasil disimpan." | | |
 | SET-06 | Kartu Operasional harian: isi Tanggal transaksi aktif = **T (hari ini)**. Simpan. | "Pengaturan berhasil disimpan." Tanggal transaksi di bagian atas aplikasi menampilkan tanggal T. Tidak ada lagi isian Uang modal (modal diisi saat membuka sesi kas). | | |
-| SET-07 | Kosongkan Tanggal transaksi aktif, lalu Simpan. | Ditolak: tanggal transaksi wajib diisi. Isi lagi dengan T. | | |
+| SET-07 | Kosongkan Tanggal transaksi aktif (tombol **Bersihkan** di kalender), lalu Simpan. Muat ulang halaman. | "Pengaturan berhasil disimpan." Isian tetap **kosong** dengan tulisan samar "Kosong = mengikuti tanggal hari ini"; tanggal di bagian atas aplikasi menampilkan hari ini. Isi lagi dengan T lalu Simpan. | | |
 
 ---
 

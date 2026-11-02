@@ -33,7 +33,7 @@ class UpdatePengaturanRequest extends FormRequest
 
         foreach ($this->records() as $kunci => $pengaturan) {
             $rules["nilai.{$kunci}"] = match ($pengaturan->tipe) {
-                'tanggal' => ['required', 'date'],
+                'tanggal' => ['nullable', 'date'],
                 'uang' => ['nullable', 'numeric', 'min:0', 'max:9999999999999.99', 'decimal:0,2'],
                 'persen' => ['nullable', 'numeric', 'min:0', 'max:100'],
                 'angka' => ['nullable', 'integer'],

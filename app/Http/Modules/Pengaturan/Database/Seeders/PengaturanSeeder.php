@@ -15,7 +15,7 @@ class PengaturanSeeder extends Seeder
      * @var list<array{kunci: string, label: string, tipe: string, grup: string, nilai: string|null, keterangan?: string}>
      */
     public const DEFAULTS = [
-        ['kunci' => 'tanggal_transaksi', 'label' => 'Tanggal transaksi aktif', 'tipe' => 'tanggal', 'grup' => 'harian', 'nilai' => null, 'keterangan' => 'Tanggal yang dipakai untuk semua transaksi hari ini.'],
+        ['kunci' => 'tanggal_transaksi', 'label' => 'Tanggal transaksi aktif', 'tipe' => 'tanggal', 'grup' => 'harian', 'nilai' => null, 'keterangan' => 'Tanggal yang dipakai untuk semua transaksi. Kosongkan agar otomatis mengikuti tanggal hari ini.'],
         ['kunci' => 'bunga_minimal', 'label' => 'Bunga minimal', 'tipe' => 'uang', 'grup' => 'keuangan', 'nilai' => '0.00'],
         ['kunci' => 'suku_bunga_tabungan', 'label' => 'Suku bunga tabungan per tahun', 'tipe' => 'persen', 'grup' => 'keuangan', 'nilai' => '0'],
         ['kunci' => 'setoran_awal_minimal', 'label' => 'Setoran awal minimal', 'tipe' => 'uang', 'grup' => 'keuangan', 'nilai' => '0.00'],

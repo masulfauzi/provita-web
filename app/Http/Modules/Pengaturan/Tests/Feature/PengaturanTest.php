@@ -65,6 +65,26 @@ it('memvalidasi nilai sesuai tipe', function () {
         ->assertSessionHasErrors(['nilai.tanggal_transaksi', 'nilai.harga_buku_tabungan']);
 });
 
+it('tanggal transaksi boleh dikosongkan agar mengikuti hari ini', function () {
+    $service = app(PengaturanService::class);
+    $service->set('tanggal_transaksi', '2026-10-22');
+
+    $this->actingAs(userWithRole('teller'))
+        ->put('/pengaturan', ['nilai' => ['tanggal_transaksi' => null]])
+        ->assertSessionHasNoErrors();
+
+    $service->flush();
+
+    expect(Pengaturan::where('kunci', 'tanggal_transaksi')->value('nilai'))->toBeNull()
+        ->and($service->tanggalTransaksi()->toDateString())->toBe(today()->toDateString());
+
+    // Halaman pengaturan mengirim nilai kosong apa adanya, bukan tanggal hari ini.
+    $this->get('/pengaturan')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('groups.0.items.0.kunci', 'tanggal_transaksi')
+            ->where('groups.0.items.0.nilai', null));
+});
+
 it('membagikan tanggal transaksi aktif ke semua halaman', function () {
     app(PengaturanService::class)->set('tanggal_transaksi', '2026-01-05');
 
