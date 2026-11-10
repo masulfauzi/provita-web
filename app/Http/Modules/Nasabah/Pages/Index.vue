@@ -67,6 +67,9 @@ function lihat(event) {
     <Head title="Nasabah" />
 
     <PageHeader title="Nasabah" subtitle="Siswa, guru, dan karyawan yang terdaftar di Bank Provita">
+        <Link v-if="can('nasabah.impor')" href="/nasabah/impor">
+            <Button label="Impor dari Excel" icon="pi pi-upload" severity="secondary" outlined />
+        </Link>
         <Link v-if="can('nasabah.tambah')" href="/nasabah/create">
             <Button label="Tambah nasabah" icon="pi pi-plus" />
         </Link>

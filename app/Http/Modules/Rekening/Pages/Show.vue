@@ -141,6 +141,10 @@ function kirimKoreksi() {
         <div class="card">
             <div class="text-muted-color">Saldo</div>
             <div class="mt-2 text-2xl font-semibold"><MoneyText :value="rekening.saldo" /></div>
+            <div v-if="Number(rekening.saldo_awal) > 0" class="mt-1 text-sm text-muted-color">
+                Termasuk saldo awal migrasi <MoneyText :value="rekening.saldo_awal" />
+                <span v-if="rekening.tanggal_buka">per <DateText :value="rekening.tanggal_buka" /></span>
+            </div>
         </div>
         <div class="card">
             <div class="text-muted-color">Pemilik</div>

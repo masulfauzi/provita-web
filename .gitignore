@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Data asli nasabah (migrasi sistem lama) dan file kunci Excel
+/docs/data_nasabah.xlsx
+/docs/~$*

@@ -31,7 +31,8 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 24. [Uji umum & ketahanan](#24-uji-umum--ketahanan)
 25. [Komputer terdaftar](#25-komputer-terdaftar)
 26. [Pinjaman](#26-pinjaman)
-27. [Ringkasan hasil](#27-ringkasan-hasil)
+27. [Impor data sistem lama](#27-impor-data-sistem-lama)
+28. [Ringkasan hasil](#28-ringkasan-hasil)
 
 ---
 
@@ -721,7 +722,27 @@ Dikerjakan **terakhir**: pinjaman menggerakkan kas dan jurnal, sehingga angka ba
 
 ---
 
-## 27. Ringkasan hasil
+## 27. Impor data sistem lama
+
+Dikerjakan di **database terpisah yang masih kosong** (tanpa data dari bagian 1–26), karena impor ditolak bila NISN atau nomor rekening sudah ada. Gunakan dua file uji berisi **data palsu** di folder `docs/qa/`: `impor_uji.xlsx` (format sama dengan file sistem lama, tanpa error) dan `impor_salah.xlsx` (berisi kesalahan). Jangan memakai file data siswa asli untuk pengujian. Login `bendahara`.
+
+| ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
+| --- | --- | --- | --- | --- |
+| IMP-01 | Buka **Data Master → Nasabah**. | Ada tombol **Impor dari Excel**. Sebagai `teller` dan `admin1` tombol ini tidak ada, dan alamat `/nasabah/impor` menampilkan 403. | | |
+| IMP-02 | Klik **Impor dari Excel**. | Halaman "Impor data sistem lama". Tanggal saldo awal terisi **30/10/2026**. Tombol Periksa tidak bisa diklik sebelum file dipilih. | | |
+| IMP-03 | Pilih `impor_salah.xlsx`, klik **Periksa**. | **Error (5)**: baris 2 "Nomor rekening (nipd) 26001 dipakai lebih dari satu baris: 2, 3.", baris 4 saldo "-5" tidak valid, baris 5 jenis nasabah "Alumni" tidak dikenal, baris 6 jenis rekening "Tabungan Haji" tidak ada di sistem, baris 7 "Siswa wajib punya NISN." Tombol **Impor sekarang** tidak bisa diklik. Daftar Nasabah masih kosong. | | |
+| IMP-04 | Pilih file `.csv` atau file lain, klik Periksa. | Ditolak: file Excel harus berformat xlsx. | | |
+| IMP-05 | Pilih `impor_uji.xlsx`, klik **Periksa**. | Ringkasan: **9** baris, **7** nasabah (Siswa 3, Guru 1, Lembaga 3), **9** rekening (Pelajar 5 Rp 4.180.000, Wisata 2 Rp 55.000, Wisuda 1 Rp 0, Foto Katalog 1 Rp 700.000), total **Rp 4.935.000**. **Error (0)** "Tidak ada error. Data siap diimpor." **Peringatan (3)**: baris 4 kelas berbeda dengan baris Pelajar, baris 6 tidak punya rekening Tabungan Pelajar, baris 9 nama sama dengan baris 8. | | |
+| IMP-06 | Klik **Impor sekarang** → **Ya, impor**. | Pindah ke daftar Nasabah: "Impor selesai: 7 nasabah, 9 rekening, saldo Rp 4.935.000 (jurnal JU-…)." | | |
+| IMP-07 | Buka nasabah **Budi Santoso (contoh)**, lalu **Dedi Pratama**. | Budi: satu nasabah dengan 3 rekening: **25001** (Pelajar Rp 150.000), **42001** (Wisata Rp 50.000), **429999999901** (Wisuda Rp 0, nipd kosong → 42 + NISN). Kelas X AKL 1, NIS 25001, jenis kelamin kosong. Dedi: nama tanpa "(TAB WISATA)", kelas kosong, hanya rekening Wisata 42002. Ada dua lembaga Kas Kelas Contoh terpisah. | | |
+| IMP-08 | Buka salah satu rekening hasil impor. | Saldo sesuai Excel dengan catatan "Termasuk saldo awal migrasi Rp … per 30 Oktober 2026". Tabel Mutasi kosong (saldo awal bukan transaksi). Setoran berikutnya menambah saldo dengan benar. | | |
+| IMP-09 | Buka **Laporan keuangan → Neraca** per 30-10-2026, lalu **Jurnal umum**. | Kas = Simpanan tabungan nasabah = **Rp 4.935.000**; neraca seimbang. Ada satu jurnal "Saldo awal migrasi sistem lama (9 rekening)": D 1-101 Kas / K 2-101 Simpanan. Laporan kas harian 30-10-2026 tidak berisi transaksi. | | |
+| IMP-10 | Buka lagi Impor dari Excel, pilih `impor_uji.xlsx`, Periksa. | Error berisi "… sudah ada di sistem" / "… sudah terdaftar sebagai nasabah"; tombol Impor sekarang tidak bisa diklik. Data tidak bertambah. | | |
+| IMP-11 | Buka **Sistem → Log aktivitas**. | Ada satu catatan "Impor data nasabah sistem lama" oleh Bendahara (bukan ribuan catatan per nasabah). | | |
+
+---
+
+## 28. Ringkasan hasil
 
 | Bagian | Jumlah skenario | ✅ | ❌ | ⏭️ |
 | --- | --- | --- | --- | --- |
@@ -751,7 +772,8 @@ Dikerjakan **terakhir**: pinjaman menggerakkan kas dan jurnal, sehingga angka ba
 | 24. Uji umum & ketahanan | 13 | | | |
 | 25. Komputer terdaftar | 11 | | | |
 | 26. Pinjaman | 18 | | | |
-| **Total** | **297** | | | |
+| 27. Impor data sistem lama | 11 | | | |
+| **Total** | **308** | | | |
 
 **Daftar bug ditemukan**
 

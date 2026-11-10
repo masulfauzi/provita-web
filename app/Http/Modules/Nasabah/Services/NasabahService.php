@@ -112,8 +112,9 @@ class NasabahService
     /**
      * Nomor urut NSB-000001, NSB-000002, ... Baris nomor terakhir dikunci
      * agar dua teller yang mendaftar bersamaan tidak mendapat nomor sama.
+     * Dipanggil di dalam DB transaction.
      */
-    protected function nomorBerikutnya(): string
+    public function nomorBerikutnya(): string
     {
         $terakhir = Nasabah::query()
             ->where('nomor', 'like', self::PREFIX_NOMOR.'%')
