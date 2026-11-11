@@ -26,3 +26,10 @@ Route::middleware('auth')->group(function () {
 // untuk semua permintaan, termasuk csrf-cookie.
 Route::get('/api/v1/sanctum/csrf-cookie', [CsrfCookieController::class, 'show'])
     ->name('ib.csrf-cookie');
+
+// Dokumentasi API Internet Banking (publik): Swagger UI + spesifikasi OpenAPI dari docs/openapi.
+Route::view('/docs/api', 'docs.swagger')->name('docs.api');
+Route::get('/docs/api/openapi.yaml', fn () => response()->file(base_path('docs/openapi/nasabah.yaml'), [
+    'Content-Type' => 'application/yaml; charset=utf-8',
+    'Cache-Control' => 'public, max-age=300',
+]))->name('docs.api.spec');

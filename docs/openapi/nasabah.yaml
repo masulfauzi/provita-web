@@ -1,0 +1,670 @@
+openapi: 3.1.0
+info:
+  title: API Internet Banking Bank Provita
+  version: 1.0.0
+  description: |
+    API **hanya baca** untuk aplikasi Internet Banking nasabah (`provita-ib`) Bank Mini SMKN 2 Semarang.
+
+    ## Alur wajib nasabah
+    `login` → `PUT /nasabah/password` (wajib, sekali) → `PUT /nasabah/profil` (wajib, sekali) → rekening & mutasi.
+    Selama langkah wajib belum selesai, endpoint lain menolak dengan **403** berkode
+    `WAJIB_GANTI_PASSWORD` (diperiksa lebih dulu) atau `WAJIB_LENGKAPI_DATA`.
+
+    ## Autentikasi (Laravel Sanctum mode SPA)
+    1. `GET /sanctum/csrf-cookie` → server memasang cookie `XSRF-TOKEN` dan cookie sesi `provita_ib_session`.
+    2. Setiap permintaan mengirim cookie (credentials `include`) dan header `X-XSRF-TOKEN` berisi nilai cookie `XSRF-TOKEN`
+       (axios melakukannya otomatis dengan `withCredentials` + `withXSRFToken`).
+    3. `POST /nasabah/login`. Sesi berlaku 15 menit sejak aktivitas terakhir.
+
+    Sesi hanya dibuat untuk origin yang terdaftar di `SANCTUM_STATEFUL_DOMAINS`. Permintaan dari origin lain
+    (mis. curl tanpa header `Origin`) dijawab `419` saat login dan `401` untuk endpoint lain.
+    Agar **Try it out** di halaman ini bekerja, host API juga harus tercantum di `SANCTUM_STATEFUL_DOMAINS`.
+
+    ## Konvensi
+    - Nominal selalu string desimal 2 digit (`"1250000.00"`), tidak pernah float.
+    - ID berupa UUID. Waktu ISO 8601 dengan zona `+07:00`.
+    - Rekening yang tidak ada **atau** milik nasabah lain selalu `404`.
+    - Error validasi berformat Laravel: `{ message, errors: { field: [pesan] } }`.
+servers:
+  - url: /api/v1
+    description: Server ini
+  - url: https://api.{domain}/api/v1
+    description: Produksi
+    variables:
+      domain:
+        default: bankprovita.sch.id
+tags:
+  - name: Autentikasi
+    description: CSRF, login, logout, data nasabah yang login, ganti password.
+  - name: Profil
+    description: Data pribadi nasabah (wajib dilengkapi sekali).
+  - name: Rekening
+    description: Saldo, mutasi, ringkasan periode, dan PDF rekening koran.
+security:
+  - sesiNasabah: []
+    xsrf: []
+
+paths:
+  /sanctum/csrf-cookie:
+    get:
+      tags: [Autentikasi]
+      operationId: ambilCsrfCookie
+      summary: Ambil cookie CSRF
+      description: Memasang cookie `XSRF-TOKEN` dan cookie sesi. Panggil sebelum login dan setelah menerima `419`.
+      security: []
+      responses:
+        '204':
+          description: Cookie terpasang.
+          headers:
+            Set-Cookie:
+              description: '`XSRF-TOKEN` (terbaca JavaScript) dan `provita_ib_session` (HttpOnly).'
+              schema: { type: string }
+
+  /nasabah/login:
+    post:
+      tags: [Autentikasi]
+      operationId: login
+      summary: Login nasabah
+      description: |
+        Kolom `nis` menerima **NIS, nomor nasabah, atau nomor rekening**. Identitas tidak dikenal, password salah,
+        maupun akun/nasabah nonaktif dijawab dengan pesan yang sama. Maksimal **5 kali gagal per menit per NIS + IP**.
+      security:
+        - xsrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nis, password]
+              properties:
+                nis: { type: string, maxLength: 50, description: NIS, nomor nasabah, atau nomor rekening., example: '25041' }
+                password: { type: string, maxLength: 255, format: password, example: Provita2026 }
+      responses:
+        '200':
+          description: Berhasil login. Sesi diregenerasi.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Me' }
+        '419':
+          description: Sesi/CSRF tidak tersedia (origin tidak stateful) atau token CSRF kedaluwarsa.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pesan' }
+              example: { message: Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia). }
+        '422':
+          description: Identitas atau password salah (pesan selalu sama).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginGagal' }
+              example:
+                message: NIS atau password salah.
+                errors: { nis: [NIS atau password salah.] }
+                sisa_percobaan: 3
+        '429':
+          description: Terlalu banyak percobaan gagal.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerlaluBanyak' }
+              example: { message: Terlalu banyak percobaan login. Coba lagi dalam 1 menit., retry_after: 45 }
+
+  /nasabah/logout:
+    post:
+      tags: [Autentikasi]
+      operationId: logout
+      summary: Keluar
+      description: Mengakhiri sesi dan membuat ulang token CSRF. Boleh dipanggil selama onboarding.
+      x-onboarding: boleh
+      responses:
+        '204': { description: Sesi berakhir. }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/me:
+    get:
+      tags: [Autentikasi]
+      operationId: me
+      summary: Data nasabah yang login
+      description: Dipanggil frontend setiap aplikasi dibuka. Boleh dipanggil selama onboarding.
+      x-onboarding: boleh
+      responses:
+        '200':
+          description: Data nasabah dan status onboarding.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/password:
+    put:
+      tags: [Autentikasi]
+      operationId: gantiPassword
+      summary: Ganti password
+      description: |
+        Wajib sekali setelah login pertama atau setelah password direset petugas. Sukses: `wajib_ganti_password`
+        menjadi `false`, **sesi di perangkat lain dikeluarkan** (sesi ini tetap). Maksimal 10 permintaan per menit.
+
+        Aturan `password`: minimal 8 karakter; mengandung huruf **dan** angka; tidak sama dengan password lama;
+        tidak sama dengan NIS, nomor nasabah, maupun nomor rekening milik nasabah.
+      x-onboarding: boleh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password_lama, password, password_confirmation]
+              properties:
+                password_lama: { type: string, format: password, example: rahasia123 }
+                password: { type: string, format: password, minLength: 8, maxLength: 255, example: Baru2026ok }
+                password_confirmation: { type: string, format: password, example: Baru2026ok }
+      responses:
+        '200':
+          description: Password diganti.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pesan' }
+              example: { message: Password berhasil diganti. }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '422':
+          description: Validasi gagal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidasiError' }
+              examples:
+                lamaSalah:
+                  summary: Password lama salah
+                  value: { message: Password saat ini salah., errors: { password_lama: [Password saat ini salah.] } }
+                terlaluPendek:
+                  summary: Kurang dari 8 karakter
+                  value: { message: Password minimal 8 karakter., errors: { password: [Password minimal 8 karakter.] } }
+                hurufAngka:
+                  summary: Tanpa huruf atau tanpa angka
+                  value: { message: Password harus mengandung huruf dan angka., errors: { password: [Password harus mengandung huruf dan angka.] } }
+                samaLama:
+                  summary: Sama dengan password lama
+                  value: { message: Password baru tidak boleh sama dengan password lama., errors: { password: [Password baru tidak boleh sama dengan password lama.] } }
+                samaIdentitas:
+                  summary: Sama dengan NIS / nomor rekening
+                  value: { message: Password tidak boleh sama dengan NIS / nomor rekening., errors: { password: [Password tidak boleh sama dengan NIS / nomor rekening.] } }
+                konfirmasi:
+                  summary: Konfirmasi berbeda
+                  value: { message: Konfirmasi password tidak sama., errors: { password_confirmation: [Konfirmasi password tidak sama.] } }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/profil:
+    get:
+      tags: [Profil]
+      operationId: lihatProfil
+      summary: Data pribadi + riwayat login
+      description: Boleh dipanggil setelah ganti password, walaupun data pribadi belum lengkap.
+      x-onboarding: setelah ganti password
+      responses:
+        '200':
+          description: Data pribadi dan 10 login berhasil terbaru.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/Profil'
+                      - type: object
+                        required: [riwayat_login]
+                        properties:
+                          riwayat_login:
+                            type: array
+                            maxItems: 10
+                            items: { $ref: '#/components/schemas/RiwayatLogin' }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '403': { $ref: '#/components/responses/WajibGantiPassword' }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+    put:
+      tags: [Profil]
+      operationId: simpanProfil
+      summary: Lengkapi / ubah data pribadi
+      description: |
+        Hanya field di skema `ProfilInput` yang disimpan; `nama`, `nis`, `kelas`, dan `jenis` **diabaikan** bila dikirim.
+        Data wali wajib untuk siswa, opsional untuk guru/karyawan/lembaga. Sukses menandai profil lengkap,
+        sehingga endpoint rekening terbuka.
+      x-onboarding: setelah ganti password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfilInput' }
+      responses:
+        '200':
+          description: Tersimpan (tanpa `riwayat_login`).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Profil' }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '403': { $ref: '#/components/responses/WajibGantiPassword' }
+        '422':
+          description: Validasi gagal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidasiError' }
+              example:
+                message: Format No. HP tidak valid. (and 2 more errors)
+                errors:
+                  no_hp: [Format No. HP tidak valid.]
+                  kode_pos: [Kode pos berisi 5 angka.]
+                  wali_nama: [Nama orang tua/wali wajib diisi.]
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/rekening:
+    get:
+      tags: [Rekening]
+      operationId: daftarRekening
+      summary: Daftar rekening + saldo
+      description: Semua rekening milik nasabah yang login, termasuk yang sudah ditutup (`status = ditutup`).
+      x-onboarding: tidak boleh
+      responses:
+        '200':
+          description: Daftar rekening.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Rekening' }
+                  meta: { $ref: '#/components/schemas/MetaSaldo' }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '403': { $ref: '#/components/responses/Onboarding' }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/rekening/{id}:
+    get:
+      tags: [Rekening]
+      operationId: detailRekening
+      summary: Detail rekening
+      x-onboarding: tidak boleh
+      parameters:
+        - $ref: '#/components/parameters/IdRekening'
+      responses:
+        '200':
+          description: Detail rekening.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: '#/components/schemas/Rekening' }
+                  meta: { $ref: '#/components/schemas/MetaSaldo' }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '403': { $ref: '#/components/responses/Onboarding' }
+        '404': { $ref: '#/components/responses/TidakDitemukan' }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/rekening/{id}/mutasi:
+    get:
+      tags: [Rekening]
+      operationId: mutasiRekening
+      summary: Mutasi rekening + ringkasan periode
+      description: |
+        Transaksi rekening (terbaru dulu) dalam periode, dipaginasi. **Ringkasan dihitung untuk seluruh periode**,
+        tidak terpengaruh filter `jenis` maupun paginasi. `saldo_awal` = saldo setelah transaksi terakhir sebelum `dari`,
+        atau saldo awal rekening (termasuk saldo migrasi sistem lama) bila belum ada transaksi.
+      x-onboarding: tidak boleh
+      parameters:
+        - $ref: '#/components/parameters/IdRekening'
+        - $ref: '#/components/parameters/Dari'
+        - $ref: '#/components/parameters/Sampai'
+        - name: jenis
+          in: query
+          description: Tanpa parameter = semua.
+          schema: { type: string, enum: [masuk, keluar] }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: Mutasi, meta paginasi, dan ringkasan.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta, ringkasan]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Transaksi' }
+                  meta: { $ref: '#/components/schemas/MetaMutasi' }
+                  ringkasan: { $ref: '#/components/schemas/RingkasanMutasi' }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '403': { $ref: '#/components/responses/Onboarding' }
+        '404': { $ref: '#/components/responses/TidakDitemukan' }
+        '422': { $ref: '#/components/responses/RentangTidakValid' }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/rekening/{id}/mutasi.pdf:
+    get:
+      tags: [Rekening]
+      operationId: unduhRekeningKoran
+      summary: Unduh PDF rekening koran
+      description: |
+        Semua transaksi periode (tanpa filter `jenis`, tanpa paginasi) beserta ringkasan dan waktu cetak.
+        Maksimal 10 unduhan per menit. Error tetap dikirim sebagai JSON walaupun yang diminta PDF.
+      x-onboarding: tidak boleh
+      parameters:
+        - $ref: '#/components/parameters/IdRekening'
+        - $ref: '#/components/parameters/Dari'
+        - $ref: '#/components/parameters/Sampai'
+      responses:
+        '200':
+          description: File PDF.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              example: attachment; filename="rekening-koran-25041-2026-08-11-2026-11-11.pdf"
+            Cache-Control:
+              schema: { type: string }
+              example: no-store, private
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '403': { $ref: '#/components/responses/Onboarding' }
+        '404': { $ref: '#/components/responses/TidakDitemukan' }
+        '422': { $ref: '#/components/responses/RentangTidakValid' }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+components:
+  securitySchemes:
+    sesiNasabah:
+      type: apiKey
+      in: cookie
+      name: provita_ib_session
+      description: Cookie sesi (HttpOnly) dari `/sanctum/csrf-cookie` dan login.
+    xsrf:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Nilai cookie `XSRF-TOKEN` (URL-decoded). Diisi otomatis oleh halaman ini dan oleh axios.
+
+  headers:
+    RetryAfter:
+      description: Detik sampai boleh mencoba lagi.
+      schema: { type: integer, example: 45 }
+
+  parameters:
+    IdRekening:
+      name: id
+      in: path
+      required: true
+      description: UUID rekening milik nasabah yang login.
+      schema: { type: string, format: uuid }
+    Dari:
+      name: dari
+      in: query
+      description: Awal periode (`Y-m-d`). Default = `sampai` dikurangi 3 bulan.
+      schema: { type: string, format: date, example: '2026-08-11' }
+    Sampai:
+      name: sampai
+      in: query
+      description: Akhir periode (`Y-m-d`). Default = hari ini. Rentang maksimal 3 bulan.
+      schema: { type: string, format: date, example: '2026-11-11' }
+
+  responses:
+    BelumLogin:
+      description: Belum login, sesi habis, akun/nasabah dinonaktifkan, atau password diganti/direset dari tempat lain.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Pesan' }
+          example: { message: Unauthenticated. }
+    WajibGantiPassword:
+      description: Nasabah belum mengganti password awal/sementara.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/OnboardingError' }
+          example: { message: Anda wajib mengganti password., kode: WAJIB_GANTI_PASSWORD }
+    Onboarding:
+      description: Langkah wajib belum selesai. `WAJIB_GANTI_PASSWORD` diperiksa lebih dulu.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/OnboardingError' }
+          examples:
+            gantiPassword:
+              summary: Belum ganti password
+              value: { message: Anda wajib mengganti password., kode: WAJIB_GANTI_PASSWORD }
+            lengkapiData:
+              summary: Data pribadi belum lengkap
+              value: { message: Anda wajib melengkapi data pribadi., kode: WAJIB_LENGKAPI_DATA }
+    TidakDitemukan:
+      description: Rekening tidak ada **atau** bukan milik nasabah (keduanya 404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Pesan' }
+          example: { message: Rekening tidak ditemukan. }
+    RentangTidakValid:
+      description: Tanggal tidak valid atau rentang lebih dari 3 bulan.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidasiError' }
+          examples:
+            maksimal:
+              summary: Lebih dari 3 bulan
+              value: { message: Rentang tanggal maksimal 3 bulan., errors: { dari: [Rentang tanggal maksimal 3 bulan.] } }
+            urutan:
+              summary: dari > sampai
+              value: { message: Tanggal awal harus sebelum tanggal akhir., errors: { dari: [Tanggal awal harus sebelum tanggal akhir.] } }
+            format:
+              summary: Format bukan Y-m-d
+              value: { message: Format tanggal tidak valid., errors: { dari: [Format tanggal tidak valid.] } }
+    TerlaluBanyak:
+      description: Batas permintaan terlampaui (60 per menit per akun; password & PDF 10 per menit).
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Pesan' }
+          example: { message: Too Many Attempts. }
+
+  schemas:
+    Nominal:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+      description: Nominal rupiah, string 2 desimal.
+      example: '1250000.00'
+
+    Pesan:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+
+    ValidasiError:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    LoginGagal:
+      allOf:
+        - $ref: '#/components/schemas/ValidasiError'
+        - type: object
+          required: [sisa_percobaan]
+          properties:
+            sisa_percobaan: { type: integer, minimum: 0, maximum: 5 }
+
+    TerlaluBanyak:
+      type: object
+      required: [message, retry_after]
+      properties:
+        message: { type: string }
+        retry_after: { type: integer, description: Detik. }
+
+    OnboardingError:
+      type: object
+      required: [message, kode]
+      properties:
+        message: { type: string }
+        kode: { type: string, enum: [WAJIB_GANTI_PASSWORD, WAJIB_LENGKAPI_DATA] }
+
+    Me:
+      type: object
+      required: [id, nis, nama, nama_panggilan, kelas, jenis_nasabah, nomor_rekening, wajib_ganti_password, profil_lengkap, login_terakhir]
+      properties:
+        id: { type: string, format: uuid, description: ID nasabah. }
+        nis: { type: string, description: NIS; nomor nasabah untuk guru/karyawan/lembaga tanpa NIS., example: '25041' }
+        nama: { type: string, example: Rizky Ramadhan }
+        nama_panggilan: { type: string, description: Kata pertama nama., example: Rizky }
+        kelas: { type: [string, 'null'], example: XII TJKT 3 }
+        jenis_nasabah: { type: string, enum: [siswa, guru, karyawan, lembaga] }
+        nomor_rekening:
+          type: array
+          description: Nomor semua rekening milik nasabah (dipakai aturan password).
+          items: { type: string }
+          example: ['25041', '420088288425']
+        wajib_ganti_password: { type: boolean }
+        profil_lengkap: { type: boolean }
+        login_terakhir:
+          type: [string, 'null']
+          format: date-time
+          description: Login berhasil sebelum sesi ini.
+          example: '2026-11-09T11:41:00+07:00'
+
+    Profil:
+      type: object
+      required: [nama, nis, kelas, jenis_nasabah, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat_jalan, rt, rw, kelurahan, kecamatan, kota, kode_pos, no_hp, email, wali_nama, wali_hubungan, wali_hp]
+      properties:
+        nama: { type: string, example: Rizky Ramadhan }
+        nis: { type: string, example: '25041' }
+        kelas: { type: [string, 'null'], example: XII TJKT 3 }
+        jenis_nasabah: { type: string, enum: [siswa, guru, karyawan, lembaga] }
+        tempat_lahir: { type: [string, 'null'], example: Semarang }
+        tanggal_lahir: { type: [string, 'null'], format: date, example: '2008-03-14' }
+        jenis_kelamin: { type: [string, 'null'], enum: [L, P, null] }
+        alamat_jalan: { type: [string, 'null'], example: Jl. Sidodadi Barat No. 8 }
+        rt: { type: [string, 'null'], example: '003' }
+        rw: { type: [string, 'null'], example: '005' }
+        kelurahan: { type: [string, 'null'], example: Karangkidul }
+        kecamatan: { type: [string, 'null'], example: Semarang Tengah }
+        kota: { type: [string, 'null'], example: Kota Semarang }
+        kode_pos: { type: [string, 'null'], example: '50136' }
+        no_hp: { type: [string, 'null'], example: '081234567890' }
+        email: { type: [string, 'null'], format: email, example: rizky@example.com }
+        wali_nama: { type: [string, 'null'], example: Slamet Riyadi }
+        wali_hubungan: { type: [string, 'null'], enum: [ayah, ibu, wali, null] }
+        wali_hp: { type: [string, 'null'], example: '081298765432' }
+
+    ProfilInput:
+      type: object
+      required: [tempat_lahir, tanggal_lahir, jenis_kelamin, alamat_jalan, rt, rw, kelurahan, kecamatan, kota, kode_pos, no_hp, persetujuan]
+      description: '`wali_nama`, `wali_hubungan`, dan `wali_hp` **wajib bila nasabah siswa**.'
+      properties:
+        tempat_lahir: { type: string, maxLength: 100, example: Semarang }
+        tanggal_lahir: { type: string, format: date, description: '`Y-m-d`, sebelum hari ini.', example: '2008-03-14' }
+        jenis_kelamin: { type: string, enum: [L, P] }
+        alamat_jalan: { type: string, maxLength: 255, example: Jl. Sidodadi Barat No. 8 }
+        rt: { type: string, pattern: '^\d{1,3}$', example: '003' }
+        rw: { type: string, pattern: '^\d{1,3}$', example: '005' }
+        kelurahan: { type: string, maxLength: 100, example: Karangkidul }
+        kecamatan: { type: string, maxLength: 100, example: Semarang Tengah }
+        kota: { type: string, maxLength: 100, example: Kota Semarang }
+        kode_pos: { type: string, pattern: '^\d{5}$', example: '50136' }
+        no_hp: { type: string, pattern: '^08\d{8,11}$', example: '081234567890' }
+        email: { type: [string, 'null'], format: email, example: rizky@example.com }
+        wali_nama: { type: [string, 'null'], maxLength: 255, example: Slamet Riyadi }
+        wali_hubungan: { type: [string, 'null'], enum: [ayah, ibu, wali, null] }
+        wali_hp: { type: [string, 'null'], pattern: '^08\d{8,11}$', example: '081298765432' }
+        persetujuan: { type: boolean, const: true, description: Persetujuan penggunaan data (wajib dicentang). }
+
+    RiwayatLogin:
+      type: object
+      required: [waktu, perangkat, ip]
+      properties:
+        waktu: { type: string, format: date-time, example: '2026-11-11T18:41:00+07:00' }
+        perangkat: { type: [string, 'null'], example: Chrome · Android }
+        ip: { type: [string, 'null'], example: 10.10.2.15 }
+
+    Rekening:
+      type: object
+      required: [id, no_rekening, produk, nama_produk, saldo, status, tanggal_buka, suku_bunga, jatuh_tempo, jangka_bulan, setoran_rutin]
+      properties:
+        id: { type: string, format: uuid }
+        no_rekening: { type: string, example: '25041' }
+        produk: { type: string, enum: [reguler, berjangka, deposito], description: Dari kode jenis rekening (`config/ib.php`). Saat ini semua `reguler`. }
+        nama_produk: { type: string, example: Tabungan Pelajar }
+        saldo: { $ref: '#/components/schemas/Nominal' }
+        status: { type: string, enum: [aktif, jatuh_tempo, ditutup], description: '`jatuh_tempo` belum dipakai.' }
+        tanggal_buka: { type: [string, 'null'], format: date, example: '2026-03-11' }
+        suku_bunga: { type: [string, 'null'], description: Persen per tahun, mis. "3.50"; null bila belum ada., example: null }
+        jatuh_tempo: { type: [string, 'null'], format: date, description: Belum ada data; selalu null. }
+        jangka_bulan: { type: [integer, 'null'], description: Belum ada data; selalu null. }
+        setoran_rutin: { type: [string, 'null'], description: Belum ada data; selalu null. }
+
+    MetaSaldo:
+      type: object
+      required: [saldo_per]
+      properties:
+        saldo_per: { type: string, format: date-time, description: Waktu server saat data diambil., example: '2026-11-11T18:41:00+07:00' }
+
+    Transaksi:
+      type: object
+      required: [id, no_referensi, waktu, jenis, kategori, keterangan, nominal, saldo_setelah, petugas, loket]
+      properties:
+        id: { type: string, format: uuid }
+        no_referensi: { type: string, description: Nomor bukti, atau 8 karakter awal ID bila tidak ada., example: 0F3A9C21 }
+        waktu: { type: string, format: date-time, description: Tanggal transaksi + jam dicatat., example: '2026-11-11T12:56:00+07:00' }
+        jenis: { type: string, enum: [masuk, keluar] }
+        kategori: { type: string, enum: [setoran_tunai, penarikan_tunai, bunga, biaya_admin, pindah_buku, penutupan, koreksi] }
+        keterangan: { type: string, example: Setoran tunai }
+        nominal: { $ref: '#/components/schemas/Nominal' }
+        saldo_setelah: { $ref: '#/components/schemas/Nominal' }
+        petugas: { type: [string, 'null'], description: Nama petugas; "Sistem" bila dibuat scheduler/console., example: Dewi Lestari }
+        loket: { type: 'null', description: Belum ada data. }
+
+    MetaMutasi:
+      type: object
+      required: [current_page, per_page, total, last_page, dari, sampai]
+      properties:
+        current_page: { type: integer, example: 1 }
+        per_page: { type: integer, example: 25 }
+        total: { type: integer, example: 23 }
+        last_page: { type: integer, example: 1 }
+        dari: { type: string, format: date, example: '2026-08-11' }
+        sampai: { type: string, format: date, example: '2026-11-11' }
+
+    RingkasanMutasi:
+      type: object
+      required: [saldo_awal, total_masuk, total_keluar, saldo_akhir, jumlah_masuk, jumlah_keluar]
+      description: '`saldo_akhir` = `saldo_awal` + `total_masuk` − `total_keluar`.'
+      properties:
+        saldo_awal: { $ref: '#/components/schemas/Nominal' }
+        total_masuk: { $ref: '#/components/schemas/Nominal' }
+        total_keluar: { $ref: '#/components/schemas/Nominal' }
+        saldo_akhir: { $ref: '#/components/schemas/Nominal' }
+        jumlah_masuk: { type: integer, example: 12 }
+        jumlah_keluar: { type: integer, example: 11 }

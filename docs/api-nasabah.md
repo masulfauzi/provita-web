@@ -2,6 +2,7 @@
 
 API **hanya baca** untuk frontend `provita-ib` (Vue 3) di `ib.<domain>`. Nasabah login, wajib mengganti password dan melengkapi data pribadi, lalu bisa melihat saldo, mutasi, dan mengunduh rekening koran PDF.
 
+- **Swagger / OpenAPI:** halaman publik **`/docs/api`** (Swagger UI, bisa *Try it out*), spesifikasi di [`docs/openapi/nasabah.yaml`](openapi/nasabah.yaml) (juga di `/docs/api/openapi.yaml`). Test `tests/Feature/OpenApiTest.php` menjaga spesifikasi tetap sinkron dengan route & respons.
 - **Base URL:** `https://api.<domain>/api/v1`
 - **Autentikasi:** Laravel Sanctum mode SPA (cookie sesi + CSRF), guard `nasabah`, terpisah dari login petugas.
 - **Nominal:** selalu string desimal 2 digit (`"1250000.00"`), tidak pernah float.
@@ -18,6 +19,8 @@ API **hanya baca** untuk frontend `provita-ib` (Vue 3) di `ib.<domain>`. Nasabah
 | `IB_SESSION_COOKIE` | `provita_ib_session` | sama | Nama cookie sesi nasabah, berbeda dengan sesi panel |
 | `IB_SESSION_LIFETIME` | `15` | `15` | Menit; frontend auto-logout setelah 10 menit diam |
 | `SESSION_SECURE_COOKIE` | `true` | `false` | Cookie hanya lewat HTTPS |
+
+Agar *Try it out* di `/docs/api` bisa login, host API juga dicantumkan di `SANCTUM_STATEFUL_DOMAINS` (mis. `ib.<domain>,api.<domain>`). Permintaan dari origin yang tidak terdaftar tidak mendapat sesi: login dijawab `419`, endpoint lain `401`.
 
 Sesi nasabah memakai cookie sendiri (`GunakanSesiNasabah`), sehingga:
 - logout Internet Banking tidak mengeluarkan petugas dari panel;
