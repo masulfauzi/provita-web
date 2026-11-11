@@ -3,6 +3,7 @@
 namespace App\Http\Modules\Nasabah\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Modules\IbNasabah\Services\AkunNasabahService;
 use App\Http\Modules\Nasabah\Exceptions\DataSiswaTidakTersedia;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Nasabah\Requests\StoreNasabahRequest;
@@ -107,6 +108,8 @@ class NasabahController extends Controller
                 ->orderByRaw("status = 'aktif' desc")
                 ->orderBy('nomor')
                 ->get(['id', 'nomor', 'jenis_rekening_id', 'saldo', 'status', 'tanggal_buka', 'tanggal_tutup']),
+            'akunIb' => $this->statusAkunIb($nasabah),
+            'passwordIb' => session('password_ib'),
             ...$this->options(),
         ]);
     }
@@ -166,6 +169,41 @@ class NasabahController extends Controller
         return [
             'jenisOptions' => $toOptions(Nasabah::JENIS),
             'jenisKelaminOptions' => $toOptions(Nasabah::JENIS_KELAMIN),
+            'waliOptions' => $toOptions(Nasabah::WALI_HUBUNGAN),
+        ];
+    }
+
+    /**
+     * Reset password Internet Banking: password sementara ditampilkan sekali ke petugas,
+     * nasabah wajib ganti password, dan semua sesinya dikeluarkan. Akun dibuat bila belum ada.
+     */
+    public function resetPasswordIb(Request $request, Nasabah $nasabah, AkunNasabahService $akun): RedirectResponse
+    {
+        abort_unless($nasabah->is_active, 422, 'Nasabah tidak aktif.');
+
+        $password = $akun->resetOlehPetugas($nasabah, $request->user());
+
+        return redirect()->route('nasabah.show', $nasabah)
+            ->with('success', "Password Internet Banking {$nasabah->nama} direset.")
+            ->with('password_ib', $password);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function statusAkunIb(Nasabah $nasabah): ?array
+    {
+        $akun = $nasabah->akunIb()->first();
+
+        if (! $akun) {
+            return null;
+        }
+
+        return [
+            'is_active' => $akun->is_active,
+            'wajib_ganti_password' => $akun->wajib_ganti_password,
+            'profil_lengkap' => $akun->profilLengkap(),
+            'login_terakhir' => $akun->riwayatLogin()->where('berhasil', true)->max('waktu'),
         ];
     }
 }

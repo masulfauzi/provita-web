@@ -1,6 +1,10 @@
 <?php
 
+use App\Http\Middleware\AutentikasiNasabah;
+use App\Http\Middleware\GunakanSesiNasabah;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\HeaderKeamanan;
+use App\Http\Middleware\PastikanOnboardingNasabah;
 use App\Http\Middleware\PastikanPerangkatTerdaftar;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -25,6 +29,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             PastikanPerangkatTerdaftar::class,
             HandleInertiaRequests::class,
+        ]);
+
+        // Internet Banking nasabah: Sanctum SPA (cookie sesi) untuk origin di SANCTUM_STATEFUL_DOMAINS,
+        // dengan cookie sesi sendiri (GunakanSesiNasabah harus jalan sebelum StartSession).
+        $middleware->prepend(GunakanSesiNasabah::class);
+        $middleware->statefulApi();
+        $middleware->api(append: [HeaderKeamanan::class]);
+        $middleware->alias([
+            'auth.nasabah' => AutentikasiNasabah::class,
+            'ib.onboarding' => PastikanOnboardingNasabah::class,
         ]);
 
         $middleware->redirectGuestsTo('/login');

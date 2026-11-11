@@ -10,10 +10,18 @@ const KOSONG = {
     kelas: '',
     tempat_lahir: '',
     tanggal_lahir: null,
-    alamat: '',
+    alamat_jalan: '',
+    rt: '',
+    rw: '',
+    kelurahan: '',
+    kecamatan: '',
+    kota: '',
+    kode_pos: '',
     no_hp: '',
     email: '',
     nama_orang_tua: '',
+    wali_hubungan: null,
+    wali_hp: '',
     keterangan: '',
 };
 
@@ -37,6 +45,8 @@ function toDateString(date) {
 export function useNasabahForm(item = null) {
     const initial = Object.fromEntries(Object.keys(KOSONG).map((key) => [key, item?.[key] ?? KOSONG[key]]));
     initial.tanggal_lahir = toDate(item?.tanggal_lahir);
+    // Data lama hanya punya alamat satu baris: jadikan isian jalan agar tidak hilang saat disimpan.
+    if (!initial.alamat_jalan && item?.alamat) initial.alamat_jalan = item.alamat;
 
     const form = useForm(initial);
 
@@ -46,6 +56,8 @@ export function useNasabahForm(item = null) {
         nisn: data.jenis === 'siswa' ? data.nisn : null,
         kelas: data.jenis === 'siswa' ? data.kelas : null,
         nama_orang_tua: data.jenis === 'siswa' ? data.nama_orang_tua : null,
+        wali_hubungan: data.jenis === 'siswa' ? data.wali_hubungan : null,
+        wali_hp: data.jenis === 'siswa' ? data.wali_hp : null,
         ...(data.jenis === 'lembaga'
             ? { jenis_kelamin: null, nis: null, nik: null, tempat_lahir: null, tanggal_lahir: null }
             : {}),

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Modules\IbNasabah\Models\AkunNasabah;
 use App\Models\User;
 
 return [
@@ -42,6 +43,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Nasabah Internet Banking: terpisah total dari petugas (guard web).
+        'nasabah' => [
+            'driver' => 'session',
+            'provider' => 'akun_nasabah',
+        ],
     ],
 
     /*
@@ -65,6 +72,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'akun_nasabah' => [
+            'driver' => 'eloquent',
+            'model' => AkunNasabah::class,
         ],
 
         // 'users' => [

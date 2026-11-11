@@ -10,6 +10,7 @@ const props = defineProps({
     kelas: { type: Array, default: () => [] },
     jenisOptions: { type: Array, default: () => [] },
     jenisKelaminOptions: { type: Array, default: () => [] },
+    waliOptions: { type: Array, default: () => [] },
 });
 
 const form = useNasabahForm(props.item);
@@ -30,6 +31,7 @@ function submit() {
         :kelas="kelas"
         :jenis-options="jenisOptions"
         :jenis-kelamin-options="jenisKelaminOptions"
+        :wali-options="waliOptions"
         submit-label="Simpan perubahan"
         @submit="submit"
     >

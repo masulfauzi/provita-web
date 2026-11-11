@@ -22,3 +22,4 @@ Schedule::job(new CekJatuhTempoDeposito)->dailyAt('00:30')->onOneServer();
 Schedule::job(HitungBungaBulanan::untukBulanLalu())->monthlyOn(1, '02:00')->onOneServer();
 
 Schedule::command('queue:prune-failed --hours=720')->weekly();
+Schedule::command('ib:bersihkan-login')->weeklyOn(0, '03:00')->onOneServer();

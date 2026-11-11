@@ -68,6 +68,8 @@ class NasabahService
      */
     public function create(array $data): Nasabah
     {
+        $data = $this->denganAlamat($data);
+
         return DB::transaction(function () use ($data) {
             $nasabah = new Nasabah($data);
             $nasabah->nomor = $this->nomorBerikutnya();
@@ -82,9 +84,24 @@ class NasabahService
      */
     public function update(Nasabah $nasabah, array $data): Nasabah
     {
-        $nasabah->update($data);
+        $nasabah->update($this->denganAlamat($data));
 
         return $nasabah;
+    }
+
+    /**
+     * Kolom `alamat` (dipakai halaman & cetakan lama) disusun dari alamat terstruktur.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function denganAlamat(array $data): array
+    {
+        if (array_key_exists('alamat_jalan', $data)) {
+            $data['alamat'] = Nasabah::susunAlamat($data);
+        }
+
+        return $data;
     }
 
     public function setActive(Nasabah $nasabah, bool $active): void

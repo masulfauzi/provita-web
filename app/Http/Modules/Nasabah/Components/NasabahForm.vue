@@ -14,6 +14,7 @@ const props = defineProps({
     kelas: { type: Array, default: () => [] },
     jenisOptions: { type: Array, default: () => [] },
     jenisKelaminOptions: { type: Array, default: () => [] },
+    waliOptions: { type: Array, default: () => [] },
     submitLabel: { type: String, default: 'Simpan' },
     // "create": siswa wajib memeriksa NISN dulu sebelum mengisi form; "edit": periksa opsional.
     mode: { type: String, default: 'create' },
@@ -191,20 +192,96 @@ function terimaHasil(value) {
                     <InputText id="email" v-model="form.email" type="email" :invalid="!!form.errors.email" />
                     <FieldError :message="form.errors.email" />
                 </div>
-                <div v-if="isSiswa" class="flex flex-col gap-2">
-                    <label for="nama_orang_tua" class="font-medium">Nama orang tua / wali</label>
-                    <InputText
-                        id="nama_orang_tua"
-                        v-model="form.nama_orang_tua"
-                        :invalid="!!form.errors.nama_orang_tua"
-                    />
-                    <FieldError :message="form.errors.nama_orang_tua" />
-                </div>
                 <div class="flex flex-col gap-2 md:col-span-2">
-                    <label for="alamat" class="font-medium">Alamat</label>
-                    <Textarea id="alamat" v-model="form.alamat" rows="2" :invalid="!!form.errors.alamat" />
-                    <FieldError :message="form.errors.alamat" />
+                    <label for="alamat_jalan" class="font-medium">Alamat (jalan, nomor rumah)</label>
+                    <InputText id="alamat_jalan" v-model="form.alamat_jalan" :invalid="!!form.errors.alamat_jalan" />
+                    <FieldError :message="form.errors.alamat_jalan" />
                 </div>
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="flex flex-col gap-2">
+                        <label for="rt" class="font-medium">RT</label>
+                        <InputText
+                            id="rt"
+                            v-model="form.rt"
+                            inputmode="numeric"
+                            maxlength="3"
+                            :invalid="!!form.errors.rt"
+                        />
+                        <FieldError :message="form.errors.rt" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="rw" class="font-medium">RW</label>
+                        <InputText
+                            id="rw"
+                            v-model="form.rw"
+                            inputmode="numeric"
+                            maxlength="3"
+                            :invalid="!!form.errors.rw"
+                        />
+                        <FieldError :message="form.errors.rw" />
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="kelurahan" class="font-medium">Kelurahan / desa</label>
+                    <InputText id="kelurahan" v-model="form.kelurahan" :invalid="!!form.errors.kelurahan" />
+                    <FieldError :message="form.errors.kelurahan" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="kecamatan" class="font-medium">Kecamatan</label>
+                    <InputText id="kecamatan" v-model="form.kecamatan" :invalid="!!form.errors.kecamatan" />
+                    <FieldError :message="form.errors.kecamatan" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="kota" class="font-medium">Kota / kabupaten</label>
+                    <InputText id="kota" v-model="form.kota" :invalid="!!form.errors.kota" />
+                    <FieldError :message="form.errors.kota" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="kode_pos" class="font-medium">Kode pos</label>
+                    <InputText
+                        id="kode_pos"
+                        v-model="form.kode_pos"
+                        inputmode="numeric"
+                        maxlength="5"
+                        :invalid="!!form.errors.kode_pos"
+                    />
+                    <FieldError :message="form.errors.kode_pos" />
+                </div>
+                <template v-if="isSiswa">
+                    <div class="flex flex-col gap-2">
+                        <label for="nama_orang_tua" class="font-medium">Nama orang tua / wali</label>
+                        <InputText
+                            id="nama_orang_tua"
+                            v-model="form.nama_orang_tua"
+                            :invalid="!!form.errors.nama_orang_tua"
+                        />
+                        <FieldError :message="form.errors.nama_orang_tua" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="wali_hubungan" class="font-medium">Hubungan</label>
+                        <Select
+                            v-model="form.wali_hubungan"
+                            input-id="wali_hubungan"
+                            :options="waliOptions"
+                            option-label="label"
+                            option-value="value"
+                            placeholder="Pilih"
+                            show-clear
+                            :invalid="!!form.errors.wali_hubungan"
+                        />
+                        <FieldError :message="form.errors.wali_hubungan" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="wali_hp" class="font-medium">Nomor HP orang tua / wali</label>
+                        <InputText
+                            id="wali_hp"
+                            v-model="form.wali_hp"
+                            inputmode="tel"
+                            :invalid="!!form.errors.wali_hp"
+                        />
+                        <FieldError :message="form.errors.wali_hp" />
+                    </div>
+                </template>
                 <div class="flex flex-col gap-2 md:col-span-2">
                     <label for="keterangan" class="font-medium">Keterangan</label>
                     <Textarea id="keterangan" v-model="form.keterangan" rows="2" :invalid="!!form.errors.keterangan" />

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\AutentikasiNasabah;
+use App\Http\Modules\IbNasabah\Models\AkunNasabah;
 use App\Http\Modules\Kas\Models\SesiKas;
 use App\Http\Modules\Kas\Services\SesiKasService;
 use App\Http\Modules\Nasabah\Models\Nasabah;
@@ -62,4 +64,23 @@ function userWithRole(string $role): User
 function bukaSesiKas(int|string $modal = 0, array $petugas = []): SesiKas
 {
     return app(SesiKasService::class)->buka($modal, $petugas ?: [Nasabah::factory()->create(['jenis' => 'siswa'])->id]);
+}
+
+/**
+ * Permintaan dari frontend Internet Banking (origin stateful Sanctum), sudah login sebagai
+ * akun nasabah tersebut dengan versi sesi saat ini.
+ */
+function sebagaiNasabah(AkunNasabah $akun, ?int $versiSesi = null)
+{
+    return test()->actingAs($akun, 'nasabah')
+        ->withSession([AutentikasiNasabah::KUNCI_VERSI => $versiSesi ?? $akun->versi_sesi])
+        ->withHeaders(['Origin' => 'http://localhost:5173', 'Referer' => 'http://localhost:5173/']);
+}
+
+/**
+ * Permintaan dari frontend Internet Banking tanpa login.
+ */
+function dariIb()
+{
+    return test()->withHeaders(['Origin' => 'http://localhost:5173', 'Referer' => 'http://localhost:5173/']);
 }

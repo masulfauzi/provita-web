@@ -20,6 +20,10 @@ Route::middleware('can:nasabah.lihat')->group(function () {
     Route::resource('nasabah', NasabahController::class)
         ->parameters(['nasabah' => 'nasabah']);
 
+    Route::post('/nasabah/{nasabah}/reset-password-ib', [NasabahController::class, 'resetPasswordIb'])
+        ->middleware('can:nasabah.reset_password_ib')
+        ->name('nasabah.reset-password-ib');
+
     Route::patch('/nasabah/{nasabah}/aktif', [NasabahController::class, 'toggleActive'])
         ->name('nasabah.toggle-active');
 });

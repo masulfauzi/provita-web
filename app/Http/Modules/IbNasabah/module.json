@@ -1,0 +1,8 @@
+{
+    "name": "IbNasabah",
+    "label": "Internet Banking nasabah",
+    "icon": "pi pi-globe",
+    "order": 950,
+    "menu": [],
+    "permissions": {}
+}

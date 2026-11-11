@@ -37,5 +37,7 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="PERANGKAT_WAJIB" value="false"/>
+        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost:5173"/>
+        <env name="IB_URL" value="http://localhost:5173"/>
     </php>
 </phpunit>

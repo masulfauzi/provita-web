@@ -64,6 +64,15 @@ class ModuleServiceProvider extends ServiceProvider
             Route::middleware(['web', 'auth'])->group($module->path('routes/web.php'));
         }
 
+        // Internet Banking nasabah: setiap file mengatur middleware auth.nasabah sendiri
+        // (login publik), lihat docs/api-nasabah.md.
+        if (is_file($module->path('routes/ib.php'))) {
+            Route::prefix('api/v1/nasabah')
+                ->name('ib.')
+                ->middleware('api')
+                ->group($module->path('routes/ib.php'));
+        }
+
         if (is_file($module->path('routes/api.php'))) {
             Route::prefix('api/v1')
                 ->name('api.')

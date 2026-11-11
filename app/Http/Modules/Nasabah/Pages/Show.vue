@@ -1,9 +1,10 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
+import Dialog from 'primevue/dialog';
 import Tag from 'primevue/tag';
 import { useConfirm } from 'primevue/useconfirm';
 import ConfirmDelete from '@/Components/ConfirmDelete.vue';
@@ -17,6 +18,10 @@ const props = defineProps({
     rekening: { type: Array, default: () => [] },
     jenisOptions: { type: Array, default: () => [] },
     jenisKelaminOptions: { type: Array, default: () => [] },
+    waliOptions: { type: Array, default: () => [] },
+    akunIb: { type: Object, default: null },
+    // Password sementara hasil reset; hanya ada sekali (flash).
+    passwordIb: { type: String, default: null },
 });
 
 const { can } = usePermission();
@@ -37,10 +42,44 @@ const rincian = computed(() => [
     ...(isLembaga.value ? [] : [['Tempat lahir', props.item.tempat_lahir]]),
     ['Nomor HP', props.item.no_hp],
     ['Email', props.item.email],
-    ...(isSiswa.value ? [['Orang tua / wali', props.item.nama_orang_tua]] : []),
+    ...(isSiswa.value
+        ? [
+              [
+                  'Orang tua / wali',
+                  [
+                      props.item.nama_orang_tua,
+                      props.item.wali_hubungan ? `(${label(props.waliOptions, props.item.wali_hubungan)})` : null,
+                      props.item.wali_hp,
+                  ]
+                      .filter(Boolean)
+                      .join(' '),
+              ],
+          ]
+        : []),
     ['Alamat', props.item.alamat],
     ['Keterangan', props.item.keterangan],
 ]);
+
+function resetPasswordIb() {
+    confirm.require({
+        header: props.akunIb ? 'Reset password Internet Banking' : 'Buat akun Internet Banking',
+        message: props.akunIb
+            ? `Password ${props.item.nama} diganti password sementara, semua sesi Internet Banking-nya dikeluarkan, dan nasabah wajib mengganti password saat login. Lanjutkan?`
+            : `Akun Internet Banking untuk ${props.item.nama} dibuat dengan password sementara. Lanjutkan?`,
+        icon: 'pi pi-key',
+        rejectProps: { label: 'Batal', severity: 'secondary', text: true },
+        acceptProps: { label: 'Ya', severity: 'warn' },
+        accept: () => router.post(`/nasabah/${props.item.id}/reset-password-ib`, {}, { preserveScroll: true }),
+    });
+}
+
+const tampilPassword = ref(!!props.passwordIb);
+watch(
+    () => props.passwordIb,
+    (baru) => (tampilPassword.value = !!baru),
+);
+
+const cetakSlip = () => window.print();
 
 function toggleActive() {
     confirm.require({
@@ -95,6 +134,57 @@ function toggleActive() {
         <dt class="text-muted-color">Terdaftar</dt>
         <dd><DateText :value="item.created_at" /></dd>
     </dl>
+
+    <div class="card mt-5 max-w-3xl print:hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-semibold">Internet Banking</h2>
+                <p v-if="!akunIb" class="text-sm text-muted-color">Nasabah ini belum punya akun Internet Banking.</p>
+                <div v-else class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                    <Tag
+                        :value="akunIb.is_active ? 'Akun aktif' : 'Akun nonaktif'"
+                        :severity="akunIb.is_active ? 'success' : 'secondary'"
+                    />
+                    <Tag v-if="akunIb.wajib_ganti_password" value="Wajib ganti password" severity="warn" />
+                    <Tag v-else-if="!akunIb.profil_lengkap" value="Data pribadi belum lengkap" severity="warn" />
+                    <span class="text-muted-color">
+                        Login terakhir:
+                        <DateText v-if="akunIb.login_terakhir" :value="akunIb.login_terakhir" jam />
+                        <span v-else>belum pernah</span>
+                    </span>
+                </div>
+            </div>
+            <Button
+                v-if="can('nasabah.reset_password_ib') && item.is_active"
+                :label="akunIb ? 'Reset password IB' : 'Buat akun IB'"
+                icon="pi pi-key"
+                severity="warn"
+                outlined
+                @click="resetPasswordIb"
+            />
+        </div>
+    </div>
+
+    <Dialog v-model:visible="tampilPassword" modal header="Password sementara Internet Banking" class="w-full max-w-md">
+        <div class="slip-ib flex flex-col gap-3">
+            <p class="text-sm text-muted-color">
+                Berikan ke nasabah sekarang. Password ini <strong>tidak bisa ditampilkan lagi</strong>; nasabah wajib
+                menggantinya saat login pertama.
+            </p>
+            <dl class="grid grid-cols-[9rem_1fr] gap-x-3 gap-y-2">
+                <dt class="text-muted-color">Nama</dt>
+                <dd class="font-medium">{{ item.nama }}</dd>
+                <dt class="text-muted-color">Login (NIS / No. rek.)</dt>
+                <dd class="font-medium">{{ item.nis || item.nomor }}</dd>
+                <dt class="text-muted-color">Password</dt>
+                <dd class="font-mono text-2xl font-semibold tracking-widest">{{ passwordIb }}</dd>
+            </dl>
+            <div class="mt-2 flex justify-end gap-2 print:hidden">
+                <Button label="Cetak slip" icon="pi pi-print" severity="secondary" outlined @click="cetakSlip" />
+                <Button label="Tutup" @click="tampilPassword = false" />
+            </div>
+        </div>
+    </Dialog>
 
     <div v-if="can('rekening.lihat')" class="card mt-5 max-w-3xl">
         <div class="mb-3 flex items-center justify-between gap-3">
