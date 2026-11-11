@@ -57,12 +57,23 @@ class MutasiNasabahService
     {
         return Transaksi::query()
             ->where('rekening_id', $rekening->id)
-            ->whereBetween('tanggal', [$dari->toDateString(), $sampai->toDateString()])
+            ->whereBetween('tanggal', $this->batas($dari, $sampai))
             ->when($jenis === 'masuk', fn (Builder $q) => $q->where('mutasi', '>', 0))
             ->when($jenis === 'keluar', fn (Builder $q) => $q->where('mutasi', '<', 0))
             ->with('user:id,name')
             ->orderByDesc('tanggal')
             ->orderByDesc('urut');
+    }
+
+    /**
+     * Batas kolom tanggal. Batas atas sampai akhir hari: di SQLite kolom tanggal tersimpan sebagai
+     * "Y-m-d 00:00:00", sehingga perbandingan dengan "Y-m-d" saja melewatkan hari terakhir.
+     *
+     * @return array{0: string, 1: string}
+     */
+    protected function batas(Carbon $dari, Carbon $sampai): array
+    {
+        return [$dari->toDateString(), $sampai->toDateString().' 23:59:59'];
     }
 
     /**
@@ -80,7 +91,7 @@ class MutasiNasabahService
 
         $total = Transaksi::query()
             ->where('rekening_id', $rekening->id)
-            ->whereBetween('tanggal', [$dari->toDateString(), $sampai->toDateString()])
+            ->whereBetween('tanggal', $this->batas($dari, $sampai))
             ->selectRaw('COALESCE(SUM(CASE WHEN mutasi > 0 THEN nominal ELSE 0 END), 0) as masuk')
             ->selectRaw('COALESCE(SUM(CASE WHEN mutasi < 0 THEN nominal ELSE 0 END), 0) as keluar')
             ->selectRaw('COALESCE(SUM(CASE WHEN mutasi > 0 THEN 1 ELSE 0 END), 0) as jumlah_masuk')

@@ -19,6 +19,11 @@ class AutentikasiNasabah
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Tanpa sesi (request bukan dari origin stateful Sanctum, mis. curl) tidak mungkin login.
+        if (! $request->hasSession()) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
         $guard = Auth::guard('nasabah');
         /** @var AkunNasabah|null $akun */
         $akun = $guard->user();

@@ -158,3 +158,12 @@ it('mengunduh PDF rekening koran untuk rekening sendiri', function () {
     sebagaiNasabah($this->akun)->getJson("/api/v1/nasabah/rekening/{$this->rekening->id}/mutasi.pdf?dari=2026-01-01")
         ->assertStatus(422)->assertJsonValidationErrors('dari');
 });
+
+it('transaksi pada tanggal akhir periode ikut dihitung', function () {
+    $hariIni = mutasiPada($this->rekening, '2026-11-11', 'setor', 5000);
+
+    sebagaiNasabah($this->akun)->getJson("/api/v1/nasabah/rekening/{$this->rekening->id}/mutasi?sampai=2026-11-11")
+        ->assertJsonPath('data.0.id', $hariIni->id)
+        ->assertJsonPath('ringkasan.total_masuk', '5000.00')
+        ->assertJsonPath('ringkasan.saldo_akhir', '105000.00');
+});

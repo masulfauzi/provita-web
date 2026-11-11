@@ -29,6 +29,13 @@ class AuthNasabahController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
+        // Sesi & CSRF hanya ada untuk origin di SANCTUM_STATEFUL_DOMAINS (frontend IB).
+        if (! $request->hasSession()) {
+            return response()->json([
+                'message' => 'Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia).',
+            ], 419);
+        }
+
         $data = $request->validate([
             'nis' => ['required', 'string', 'max:50'],
             'password' => ['required', 'string', 'max:255'],

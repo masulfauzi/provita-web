@@ -118,3 +118,12 @@ it('membuat ringkasan perangkat dari user agent', function () {
         ->and($service->perangkat('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0'))->toBe('Firefox · Windows')
         ->and($service->perangkat('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'))->toBe('Safari · iOS');
 });
+
+it('request tanpa origin frontend (tanpa sesi) dijawab rapi, bukan 500', function () {
+    $this->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])
+        ->assertStatus(419)
+        ->assertJson(['message' => 'Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia).']);
+
+    $this->getJson('/api/v1/nasabah/me')->assertUnauthorized()->assertExactJson(['message' => 'Unauthenticated.']);
+    $this->getJson('/api/v1/nasabah/rekening')->assertUnauthorized();
+});
