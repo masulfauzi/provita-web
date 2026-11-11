@@ -32,7 +32,8 @@ Dokumen ini berisi daftar uji manual untuk aplikasi Bank Mini SMK Negeri 2 Semar
 25. [Komputer terdaftar](#25-komputer-terdaftar)
 26. [Pinjaman](#26-pinjaman)
 27. [Impor data sistem lama](#27-impor-data-sistem-lama)
-28. [Ringkasan hasil](#28-ringkasan-hasil)
+28. [Akun Internet Banking (panel)](#28-akun-internet-banking-panel)
+29. [Ringkasan hasil](#29-ringkasan-hasil)
 
 ---
 
@@ -742,7 +743,25 @@ Dikerjakan di **database terpisah yang masih kosong** (tanpa data dari bagian 1�
 
 ---
 
-## 28. Ringkasan hasil
+## 28. Akun Internet Banking (panel)
+
+Pengujian sisi panel untuk akun Internet Banking nasabah dan isian alamat/wali baru. Aplikasi Internet Banking (`provita-ib`) diuji terpisah dengan dokumennya sendiri. Login `teller`.
+
+| ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
+| --- | --- | --- | --- | --- |
+| IBP-01 | Buka detail nasabah **Budi Santoso**. | Ada kartu **Internet Banking**: "Nasabah ini belum punya akun Internet Banking." dan tombol **Buat akun IB**. | | |
+| IBP-02 | Klik **Buat akun IB** → **Ya**. | "Password Internet Banking Budi Santoso direset." Muncul dialog **Password sementara**: nama, login (NIS), dan password 8 karakter (huruf kecil + angka). Tombol **Cetak slip** dan **Tutup**. | | |
+| IBP-03 | Tutup dialog, lalu muat ulang halaman. | Password tidak tampil lagi. Kartu Internet Banking: **Akun aktif**, **Wajib ganti password**, login terakhir "belum pernah". | | |
+| IBP-04 | Klik **Reset password IB** → **Ya**. | Password sementara baru (berbeda) tampil sekali. Bila nasabah sedang login di Internet Banking, sesinya berakhir. | | |
+| IBP-05 | Sebagai `admin1`, buka detail nasabah (atau ketik `POST` lewat alamat). | Tombol Reset password IB tidak tampil; permintaan langsung ditolak 403. | | |
+| IBP-06 | Buka **Log aktivitas**. | Ada "Password Internet Banking direset petugas" dengan nama petugas dan nasabah. | | |
+| IBP-07 | Ubah nasabah **Budi**: bagian Kontak kini berisi Alamat (jalan), RT, RW, Kelurahan/desa, Kecamatan, Kota/kabupaten, Kode pos, Nama orang tua/wali, Hubungan, Nomor HP orang tua/wali. Isi `Jl. Melati 5`, RT `3`, RW `7`, `Karangkidul`, `Semarang Tengah`, `Kota Semarang`, `50136`, wali `Slamet` / Ayah / `081298765432`. Simpan. | "Data nasabah berhasil diperbarui." Detail menampilkan Alamat "Jl. Melati 5, RT 3/RW 7, Kel. Karangkidul, Kec. Semarang Tengah, Kota Semarang 50136" dan Orang tua/wali "Slamet (Ayah) 081298765432". | | |
+| IBP-08 | Ubah lagi: Kode pos `501`, RT `1234`. Simpan. | Ditolak dengan pesan di bawah Kode pos dan RT. | | |
+| IBP-09 | Buka nasabah hasil impor/lama yang hanya punya alamat satu baris, klik Ubah. | Isian Alamat (jalan) terisi alamat lama, sehingga tidak hilang saat disimpan. | | |
+
+---
+
+## 29. Ringkasan hasil
 
 | Bagian | Jumlah skenario | ✅ | ❌ | ⏭️ |
 | --- | --- | --- | --- | --- |
@@ -773,7 +792,8 @@ Dikerjakan di **database terpisah yang masih kosong** (tanpa data dari bagian 1�
 | 25. Komputer terdaftar | 11 | | | |
 | 26. Pinjaman | 18 | | | |
 | 27. Impor data sistem lama | 11 | | | |
-| **Total** | **308** | | | |
+| 28. Akun Internet Banking (panel) | 9 | | | |
+| **Total** | **317** | | | |
 
 **Daftar bug ditemukan**
 
