@@ -104,8 +104,8 @@ function submit() {
                         <div>
                             <div>{{ option.nasabah?.nama }}</div>
                             <div class="text-xs text-muted-color">
-                                {{ option.nomor
-                                }}<span v-if="option.nasabah?.kelas"> · {{ option.nasabah.kelas }}</span>
+                                {{ option.nomor }}<span v-if="option.jenis"> · {{ option.jenis }}</span
+                                ><span v-if="option.nasabah?.kelas"> · {{ option.nasabah.kelas }}</span>
                             </div>
                         </div>
                         <MoneyText :value="option.saldo" class="text-sm" />
@@ -121,7 +121,9 @@ function submit() {
         >
             <div>
                 <div class="font-semibold">{{ terpilih.nasabah?.nama }}</div>
-                <div class="text-sm text-muted-color">{{ terpilih.nomor }}</div>
+                <div class="text-sm text-muted-color">
+                    {{ terpilih.nomor }}<span v-if="terpilih.jenis"> · {{ terpilih.jenis }}</span>
+                </div>
             </div>
             <div class="text-right">
                 <div class="text-sm text-muted-color">Saldo</div>

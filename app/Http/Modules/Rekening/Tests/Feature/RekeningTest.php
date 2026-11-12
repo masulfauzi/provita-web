@@ -115,7 +115,9 @@ it('daftar rekening dapat dicari berdasarkan nama nasabah', function () {
     $this->actingAs($this->teller)
         ->getJson('/rekening/cari?q=0012345678')
         ->assertOk()
-        ->assertJsonPath('0.nasabah.nama', $this->nasabah->nama);
+        ->assertJsonPath('0.nasabah.nama', $this->nasabah->nama)
+        // Nama jenis rekening ditampilkan setelah nomor di pencarian setor/tarik.
+        ->assertJsonPath('0.jenis', Rekening::firstWhere('nomor', '0012345678')->jenisRekening->nama);
 });
 
 it('menutup rekening memotong biaya administrasi dan mengosongkan saldo', function () {
