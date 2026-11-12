@@ -3,91 +3,70 @@
 use App\Http\Modules\IbNasabah\Models\AkunNasabah;
 use App\Http\Modules\Nasabah\Models\Nasabah;
 use App\Http\Modules\Rekening\Models\Rekening;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
-use Maatwebsite\Excel\Facades\Excel;
 
 beforeEach(function () {
-    $this->nasabah = Nasabah::factory()->create(['nis' => '25041']);
+    $this->nasabah = Nasabah::factory()->create(['nis' => '25041', 'nisn' => '0012345678']);
     Rekening::factory()->create(['nasabah_id' => $this->nasabah->id, 'nomor' => '1100325041']);
 });
 
-it('petugas mereset password IB: password sementara sekali tampil, sesi lama keluar', function () {
-    $akun = AkunNasabah::factory()->create(['nasabah_id' => $this->nasabah->id]);
+it('teller mereset akun IB: akun terhapus, sesi berakhir, nasabah bisa aktivasi ulang', function () {
+    AkunNasabah::factory()->create(['nasabah_id' => $this->nasabah->id, 'no_hp' => '081234567890']);
     $teller = userWithRole('teller');
 
-    $respons = $this->actingAs($teller)->post("/nasabah/{$this->nasabah->id}/reset-password-ib")
-        ->assertRedirect("/nasabah/{$this->nasabah->id}")
-        ->assertSessionHas('success');
-
-    $password = session('password_ib');
-    $akun->refresh();
-
-    expect($password)->toHaveLength(8)->toMatch('/[a-z]/')->toMatch('/\d/')
-        ->and(Hash::check($password, $akun->password))->toBeTrue()
-        ->and($akun->wajib_ganti_password)->toBeTrue()
-        ->and($akun->versi_sesi)->toBe(1);
+    // Nasabah sedang login di IB.
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])->assertOk();
+    $sesiIb = session()->all();
 
     $this->actingAs($teller)->get("/nasabah/{$this->nasabah->id}")
         ->assertInertia(fn (Assert $page) => $page
-            ->where('akunIb.wajib_ganti_password', true)
-            ->where('akunIb.profil_lengkap', true));
+            ->where('akunIb.no_hp', '081234567890')
+            ->where('akunIb.is_active', true)
+            ->has('akunIb.diaktivasi_at')
+            ->missing('passwordIb'));
 
-    sebagaiNasabah($akun, 0)->getJson('/api/v1/nasabah/me')->assertUnauthorized();
+    $this->actingAs($teller)->post("/nasabah/{$this->nasabah->id}/reset-akun-ib")
+        ->assertRedirect("/nasabah/{$this->nasabah->id}")
+        ->assertSessionHas('success');
 
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => $password])
-        ->assertOk()
-        ->assertJsonPath('data.wajib_ganti_password', true);
-
-    $this->assertDatabaseHas('activity_log', ['log_name' => 'nasabah', 'event' => 'reset_password_ib', 'causer_id' => $teller->id]);
-});
-
-it('reset membuat akun bila nasabah belum punya; admin tidak berhak', function () {
-    $this->actingAs(userWithRole('admin'))->post("/nasabah/{$this->nasabah->id}/reset-password-ib")->assertForbidden();
     expect(AkunNasabah::count())->toBe(0);
+    $this->assertDatabaseHas('activity_log', ['log_name' => 'nasabah', 'event' => 'reset_akun_ib', 'causer_id' => $teller->id]);
 
-    $this->actingAs(userWithRole('teller'))->post("/nasabah/{$this->nasabah->id}/reset-password-ib")->assertRedirect();
+    // Request berikutnya dari sesi IB yang sama (guard dibaca ulang dari database).
+    app('auth')->forgetGuards();
+    dariIb()->withSession($sesiIb)->getJson('/api/v1/nasabah/me')->assertUnauthorized();
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])->assertStatus(422);
+    dariIb()->postJson('/api/v1/nasabah/aktivasi/cek', ['identitas' => $this->nasabah->nisn, 'no_rekening' => '1100325041'])->assertOk();
 
-    expect(AkunNasabah::where('nasabah_id', $this->nasabah->id)->value('wajib_ganti_password'))->toBeTrue();
+    $this->actingAs($teller)->get("/nasabah/{$this->nasabah->id}")
+        ->assertInertia(fn (Assert $page) => $page->where('akunIb', null));
 });
 
-it('ib:buat-akun membuat akun untuk nasabah aktif dan mengekspor password awal', function () {
-    $this->freezeTime();
-    Excel::fake();
-    $sudah = Nasabah::factory()->create();
-    AkunNasabah::factory()->create(['nasabah_id' => $sudah->id]);
-    Nasabah::factory()->nonaktif()->create();
+it('reset tanpa akun ditolak dengan pesan; admin tidak berhak', function () {
+    $this->actingAs(userWithRole('teller'))->post("/nasabah/{$this->nasabah->id}/reset-akun-ib")->assertSessionHas('error');
 
-    $this->artisan('ib:buat-akun')->assertExitCode(2);
-    $this->artisan('ib:buat-akun --semua')->assertSuccessful();
+    AkunNasabah::factory()->create(['nasabah_id' => $this->nasabah->id]);
+    $this->actingAs(userWithRole('admin'))->post("/nasabah/{$this->nasabah->id}/reset-akun-ib")->assertForbidden();
 
-    expect(AkunNasabah::count())->toBe(2)
-        ->and(AkunNasabah::where('nasabah_id', $this->nasabah->id)->first())->wajib_ganti_password->toBeTrue();
-
-    Excel::assertStored('ib-akun-'.now()->format('Ymd-His').'.xlsx', 'local', function ($export) {
-        $baris = $export->array();
-
-        return count($baris) === 1 && $baris[0][0] === '25041' && strlen($baris[0][4]) === 8
-            && Hash::check($baris[0][4], AkunNasabah::where('nasabah_id', $this->nasabah->id)->value('password'));
-    });
-
-    $this->artisan('ib:buat-akun --semua')->expectsOutputToContain('Tidak ada nasabah aktif')->assertSuccessful();
+    expect(AkunNasabah::count())->toBe(1);
 });
 
-it('semua route nasabah selain login memakai auth.nasabah, ib.onboarding, dan throttle:ib', function () {
-    $route = collect(Route::getRoutes()->getRoutes())
-        ->filter(fn ($r) => str_starts_with($r->uri(), 'api/v1/nasabah'))
-        ->reject(fn ($r) => $r->uri() === 'api/v1/nasabah/login');
-
-    expect($route)->not->toBeEmpty();
+it('semua route nasabah kecuali aktivasi & login memakai auth.nasabah dan throttle:ib', function () {
+    $publik = ['api/v1/nasabah/login', 'api/v1/nasabah/aktivasi/cek', 'api/v1/nasabah/aktivasi'];
+    $route = collect(Route::getRoutes()->getRoutes())->filter(fn ($r) => str_starts_with($r->uri(), 'api/v1/nasabah'));
 
     foreach ($route as $r) {
         $middleware = $r->gatherMiddleware();
 
-        expect($middleware)->toContain('auth.nasabah', 'throttle:ib')
-            ->and(collect($middleware)->contains(fn ($m) => str_starts_with($m, 'ib.onboarding')))->toBeTrue("{$r->uri()} tanpa ib.onboarding");
+        if (in_array($r->uri(), $publik, true)) {
+            expect($middleware)->toContain('ib.sesi')->not->toContain('auth.nasabah');
+        } else {
+            expect($middleware)->toContain('auth.nasabah', 'throttle:ib');
+        }
     }
+
+    expect($route->map->uri()->intersect($publik))->toHaveCount(3);
 });
 
 it('membersihkan riwayat login lama, menyimpan 50 terakhir per akun', function () {
@@ -114,12 +93,12 @@ it('respons API membawa header keamanan dan CORS untuk frontend IB', function ()
 });
 
 it('sesi IB memakai cookie sendiri, terpisah dari sesi panel', function () {
-    AkunNasabah::factory()->create(['nasabah_id' => $this->nasabah->id]);
+    AkunNasabah::factory()->create(['nasabah_id' => $this->nasabah->id, 'no_hp' => '081234567890']);
     $cookiePanel = config('session.cookie');
 
     expect($cookiePanel)->not->toBe(config('ib.session.cookie'));
 
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])
         ->assertOk()
         ->assertCookie(config('ib.session.cookie'))
         ->assertCookieMissing($cookiePanel);

@@ -12,10 +12,10 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Akun Internet Banking contoh untuk pengembangan lokal, sama dengan mock frontend provita-ib:
- *  - 25039 / rahasia123  : wajib ganti password
- *  - 25040 / Provita2026 : password sudah diganti, data pribadi belum lengkap
- *  - 25041 / Provita2026 : lengkap
+ * Nasabah Internet Banking contoh untuk pengembangan lokal:
+ *  - NIS 25039 (NISN 0090025039, rekening 25039): BELUM aktivasi, untuk mencoba alur aktivasi.
+ *  - NIS 25040: sudah aktivasi, login 081234567891 / Provita2026.
+ *  - NIS 25041: sudah aktivasi, login 081234567890 / Provita2026.
  * Hanya berjalan di environment local; aman dijalankan ulang (dilewati bila NIS sudah ada).
  */
 class IbNasabahSeeder extends Seeder
@@ -27,28 +27,29 @@ class IbNasabahSeeder extends Seeder
         }
 
         $contoh = [
-            ['25039', 'Ayu Lestari', 'X AKL 1', 'P', 'rahasia123', true, false],
-            ['25040', 'Bagas Pratama', 'XI PPLG 2', 'L', 'Provita2026', false, false],
-            ['25041', 'Rizky Ramadhan', 'XII TJKT 3', 'L', 'Provita2026', false, true],
+            ['25039', 'Ayu Lestari', 'X AKL 1', 'P', null],
+            ['25040', 'Bagas Pratama', 'XI PPLG 2', 'L', '081234567891'],
+            ['25041', 'Rizky Ramadhan', 'XII TJKT 3', 'L', '081234567890'],
         ];
 
         $pengaturan = app(PengaturanService::class);
         $tanggalAsli = $pengaturan->get('tanggal_transaksi');
 
-        foreach ($contoh as [$nis, $nama, $kelas, $jk, $password, $wajibGanti, $lengkap]) {
+        foreach ($contoh as [$nis, $nama, $kelas, $jk, $noHp]) {
             if (Nasabah::query()->where('nis', $nis)->exists()) {
                 continue;
             }
 
-            DB::transaction(function () use ($nis, $nama, $kelas, $jk, $password, $wajibGanti, $lengkap, $pengaturan) {
+            DB::transaction(function () use ($nis, $nama, $kelas, $jk, $noHp, $pengaturan) {
                 $nasabah = new Nasabah([
                     'nis' => $nis,
+                    'nisn' => '00900'.$nis,
                     'nama' => $nama,
                     'jenis' => 'siswa',
                     'jenis_kelamin' => $jk,
                     'kelas' => $kelas,
                     'is_active' => true,
-                    ...($lengkap ? [
+                    ...($noHp ? [
                         'tempat_lahir' => 'Semarang',
                         'tanggal_lahir' => '2008-03-14',
                         'alamat_jalan' => 'Jl. Sidodadi Barat No. 8',
@@ -58,7 +59,7 @@ class IbNasabahSeeder extends Seeder
                         'kecamatan' => 'Semarang Tengah',
                         'kota' => 'Kota Semarang',
                         'kode_pos' => '50136',
-                        'no_hp' => '081234567890',
+                        'no_hp' => $noHp,
                         'nama_orang_tua' => 'Slamet Riyadi',
                         'wali_hubungan' => 'ayah',
                         'wali_hp' => '081298765432',
@@ -68,13 +69,15 @@ class IbNasabahSeeder extends Seeder
                 $nasabah->nomor = app(NasabahService::class)->nomorBerikutnya();
                 $nasabah->save();
 
-                $nasabah->akunIb()->create([
-                    'password' => $password,
-                    'wajib_ganti_password' => $wajibGanti,
-                    'password_diganti_at' => $wajibGanti ? null : now()->subDays(30),
-                    'profil_lengkap_at' => $lengkap ? now()->subDays(29) : null,
-                    'is_active' => true,
-                ]);
+                if ($noHp) {
+                    $nasabah->akunIb()->create([
+                        'no_hp' => $noHp,
+                        'password' => 'Provita2026',
+                        'diaktivasi_at' => now()->subDays(30),
+                        'password_diganti_at' => now()->subDays(30),
+                        'is_active' => true,
+                    ]);
+                }
 
                 $rekening = $nasabah->rekening()->create([
                     'nomor' => $nis,

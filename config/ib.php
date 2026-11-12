@@ -53,6 +53,9 @@ return [
         'koreksi' => 'Koreksi',
     ],
 
+    // Lama sesi aktivasi (menit) antara verifikasi NISN/rekening dan pengisian data.
+    'aktivasi_menit' => 15,
+
     // Batas rentang mutasi & riwayat login.
     'mutasi_maks_bulan' => 3,
     'riwayat_login_disimpan' => 50,

@@ -9,7 +9,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 
 /**
- * Data nasabah yang login + status onboarding (GET /nasabah/me, POST /nasabah/login).
+ * Data nasabah yang login (GET /nasabah/me, POST /nasabah/login).
  *
  * @mixin AkunNasabah
  */
@@ -38,8 +38,7 @@ class MeResource extends JsonResource
             'kelas' => $nasabah->kelas,
             'jenis_nasabah' => $nasabah->jenis,
             'nomor_rekening' => $nasabah->rekening()->orderBy('nomor')->pluck('nomor')->all(),
-            'wajib_ganti_password' => $this->wajib_ganti_password,
-            'profil_lengkap' => $this->profilLengkap(),
+            'no_hp' => $this->no_hp,
             'login_terakhir' => $sebelumnya ? Carbon::parse($sebelumnya)->toIso8601String() : null,
         ];
     }

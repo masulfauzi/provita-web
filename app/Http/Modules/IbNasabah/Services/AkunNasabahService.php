@@ -4,102 +4,179 @@ namespace App\Http\Modules\IbNasabah\Services;
 
 use App\Http\Modules\IbNasabah\Models\AkunNasabah;
 use App\Http\Modules\IbNasabah\Models\LoginNasabah;
+use App\Http\Modules\IbNasabah\Requests\SimpanProfilRequest;
 use App\Http\Modules\Nasabah\Models\Nasabah;
+use App\Http\Modules\Nasabah\Services\NasabahService;
 use App\Http\Modules\Rekening\Models\Rekening;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class AkunNasabahService
 {
-    /** Tanpa karakter yang mudah tertukar saat dibaca dari slip (0/O, 1/l/I). */
-    protected const HURUF = 'abcdefghjkmnpqrstuvwxyz';
+    /**
+     * Bentuk baku No. HP: angka saja, awalan +62/62 menjadi 0, mis. "+62 812-3456-7890" → "081234567890".
+     */
+    public function normalisasiHp(?string $noHp): string
+    {
+        $angka = preg_replace('/\D/', '', (string) $noHp);
 
-    protected const ANGKA = '23456789';
+        return str_starts_with($angka, '62') ? '0'.substr($angka, 2) : $angka;
+    }
 
     /**
-     * Akun dari identitas login: NIS, nomor nasabah, atau nomor rekening.
+     * Akun dari No. HP login (format bebas, dinormalisasi).
      */
-    public function cariAkun(string $identitas): ?AkunNasabah
+    public function cariAkun(string $noHp): ?AkunNasabah
+    {
+        $noHp = $this->normalisasiHp($noHp);
+
+        return $noHp === '' ? null : AkunNasabah::query()->with('nasabah')->where('no_hp', $noHp)->first();
+    }
+
+    /**
+     * Nasabah aktif yang cocok untuk aktivasi: identitas = NISN atau No. nasabah (awalan "NSB-"
+     * boleh tidak ditulis) dan nomor rekening (belum ditutup) adalah miliknya.
+     */
+    public function cariNasabahAktivasi(string $identitas, string $noRekening): ?Nasabah
     {
         $identitas = trim($identitas);
+        $nomor = strtoupper($identitas);
+        $noRekening = trim($noRekening);
 
-        if ($identitas === '') {
+        if ($identitas === '' || $noRekening === '') {
             return null;
         }
 
-        $nasabahId = Nasabah::query()->where('nis', $identitas)->orWhere('nomor', $identitas)->value('id')
-            ?? Rekening::query()->where('nomor', $identitas)->value('nasabah_id');
+        $kandidat = Nasabah::query()
+            ->where('is_active', true)
+            ->where(fn ($q) => $q->where('nisn', $identitas)
+                ->orWhere('nomor', $nomor)
+                ->orWhere('nomor', NasabahService::PREFIX_NOMOR.$nomor))
+            ->pluck('id');
 
-        return $nasabahId ? AkunNasabah::query()->with('nasabah')->where('nasabah_id', $nasabahId)->first() : null;
-    }
-
-    /**
-     * Membuat akun dengan password awal acak (wajib diganti saat login pertama).
-     *
-     * @return array{0: AkunNasabah, 1: string} akun dan password awal (teks, untuk dibagikan sekali)
-     *
-     * @throws ValidationException
-     */
-    public function buatAkun(Nasabah $nasabah): array
-    {
-        if ($nasabah->akunIb()->exists()) {
-            throw ValidationException::withMessages(['nasabah' => "{$nasabah->nama} sudah punya akun Internet Banking."]);
+        if ($kandidat->isEmpty()) {
+            return null;
         }
 
-        $password = $this->passwordAcak();
+        $nasabahId = Rekening::query()
+            ->whereIn('nasabah_id', $kandidat)
+            ->where('nomor', $noRekening)
+            ->where('status', '!=', Rekening::TUTUP)
+            ->value('nasabah_id');
 
-        $akun = $nasabah->akunIb()->create([
-            'password' => $password,
-            'wajib_ganti_password' => true,
-            'is_active' => true,
-        ]);
-
-        return [$akun, $password];
+        return $nasabahId ? Nasabah::find($nasabahId) : null;
     }
 
     /**
-     * Reset oleh petugas: password sementara, wajib ganti password, semua sesi dikeluarkan.
-     * Akun dibuat bila nasabah belum punya.
+     * Buat akun dari aktivasi sekaligus menyimpan data pribadi. Null bila nasabah ternyata sudah
+     * punya akun (aktivasi bersamaan).
+     *
+     * @param  array<string, mixed>  $data  field profil + no_hp + password
      */
-    public function resetOlehPetugas(Nasabah $nasabah, User $petugas): string
+    public function aktivasi(Nasabah $nasabah, array $data): ?AkunNasabah
     {
-        return DB::transaction(function () use ($nasabah, $petugas) {
-            $password = $this->passwordAcak();
-            $akun = $nasabah->akunIb()->lockForUpdate()->first();
+        return DB::transaction(function () use ($nasabah, $data) {
+            Nasabah::query()->whereKey($nasabah->id)->lockForUpdate()->first();
 
-            if ($akun) {
-                $akun->forceFill([
-                    'password' => $password,
-                    'wajib_ganti_password' => true,
-                    'versi_sesi' => $akun->versi_sesi + 1,
-                ])->save();
-            } else {
-                $akun = $nasabah->akunIb()->create(['password' => $password, 'wajib_ganti_password' => true, 'is_active' => true]);
+            if ($nasabah->akunIb()->exists()) {
+                return null;
             }
 
-            activity('nasabah')->performedOn($nasabah)->causedBy($petugas)->event('reset_password_ib')
-                ->withProperties(['nasabah' => $nasabah->nomor])
-                ->log('Password Internet Banking direset petugas');
+            $akun = $nasabah->akunIb()->create([
+                'no_hp' => $data['no_hp'],
+                'password' => $data['password'],
+                'diaktivasi_at' => now(),
+                'password_diganti_at' => now(),
+                'is_active' => true,
+            ]);
 
-            return $password;
+            $this->simpanProfil($akun, $data, 'aktivasi', 'Aktivasi Internet Banking');
+
+            return $akun;
         });
     }
 
     /**
-     * Nilai yang tidak boleh dipakai sebagai password: NIS, nomor nasabah, dan nomor rekening.
+     * Simpan data pribadi nasabah dari IB (hanya field SimpanProfilRequest::FIELD + no_hp) dan
+     * catat nilai lama/baru dengan penyebab akun nasabah.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function simpanProfil(AkunNasabah $akun, array $data, string $event, string $pesan): void
+    {
+        $nasabah = $akun->nasabah;
+        $data = collect($data)->only([...SimpanProfilRequest::FIELD, 'no_hp'])->all();
+
+        $kolom = [
+            ...collect($data)->except('wali_nama')->all(),
+            'nama_orang_tua' => $data['wali_nama'] ?? null,
+            'email' => filled($data['email'] ?? null) ? $data['email'] : null,
+        ];
+        $kolom['alamat'] = Nasabah::susunAlamat([...$nasabah->getAttributes(), ...$kolom]);
+
+        DB::transaction(function () use ($akun, $nasabah, $kolom, $event, $pesan) {
+            $lama = $nasabah->only(array_keys($kolom));
+            // Log nasabah dicatat manual (nilai lama/baru) agar penyebabnya akun nasabah.
+            activity()->withoutLogging(fn () => $nasabah->update($kolom));
+
+            activity('nasabah')->performedOn($nasabah)->causedBy($akun)->event($event)
+                ->withProperties(['old' => $lama, 'attributes' => $nasabah->only(array_keys($kolom))])
+                ->log($pesan);
+        });
+    }
+
+    /**
+     * Ganti No. HP login; No. HP di data nasabah ikut diperbarui.
+     */
+    public function gantiNoHp(AkunNasabah $akun, string $noHp): void
+    {
+        DB::transaction(function () use ($akun, $noHp) {
+            $lama = $akun->no_hp;
+            $akun->forceFill(['no_hp' => $noHp])->save();
+            activity()->withoutLogging(fn () => $akun->nasabah->update(['no_hp' => $noHp]));
+
+            activity('nasabah')->performedOn($akun->nasabah)->causedBy($akun)->event('ganti_no_hp')
+                ->withProperties(['old' => ['no_hp' => $lama], 'attributes' => ['no_hp' => $noHp]])
+                ->log('No. HP login Internet Banking diganti');
+        });
+    }
+
+    /**
+     * Reset oleh petugas: akun dihapus (semua sesi otomatis tidak berlaku), nasabah harus
+     * aktivasi ulang. False bila nasabah belum punya akun.
+     */
+    public function resetAkun(Nasabah $nasabah, User $petugas): bool
+    {
+        return DB::transaction(function () use ($nasabah, $petugas) {
+            $akun = $nasabah->akunIb()->lockForUpdate()->first();
+
+            if (! $akun) {
+                return false;
+            }
+
+            $akun->delete();
+
+            activity('nasabah')->performedOn($nasabah)->causedBy($petugas)->event('reset_akun_ib')
+                ->withProperties(['nasabah' => $nasabah->nomor, 'no_hp' => $akun->no_hp])
+                ->log('Akun Internet Banking direset petugas (wajib aktivasi ulang)');
+
+            return true;
+        });
+    }
+
+    /**
+     * Nilai yang tidak boleh dipakai sebagai password: NIS, NISN, No. nasabah, nomor rekening, No. HP.
      *
      * @return list<string>
      */
-    public function identitasTerlarang(AkunNasabah $akun): array
+    public function identitasTerlarang(Nasabah $nasabah, ?string $noHp = null): array
     {
-        $nasabah = $akun->nasabah;
-
         return array_values(array_filter([
             $nasabah->nis,
+            $nasabah->nisn,
             $nasabah->nomor,
+            $noHp,
             ...$nasabah->rekening()->pluck('nomor')->all(),
         ]));
     }
@@ -167,20 +244,5 @@ class AkunNasabahService
         });
 
         return $dihapus;
-    }
-
-    /**
-     * 8 karakter, selalu berisi huruf dan angka.
-     */
-    public function passwordAcak(int $panjang = 8): string
-    {
-        $semua = self::HURUF.self::ANGKA;
-        $karakter = [self::HURUF[random_int(0, strlen(self::HURUF) - 1)], self::ANGKA[random_int(0, strlen(self::ANGKA) - 1)]];
-
-        while (count($karakter) < $panjang) {
-            $karakter[] = $semua[random_int(0, strlen($semua) - 1)];
-        }
-
-        return implode('', Arr::shuffle($karakter));
     }
 }

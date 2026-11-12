@@ -109,7 +109,6 @@ class NasabahController extends Controller
                 ->orderBy('nomor')
                 ->get(['id', 'nomor', 'jenis_rekening_id', 'saldo', 'status', 'tanggal_buka', 'tanggal_tutup']),
             'akunIb' => $this->statusAkunIb($nasabah),
-            'passwordIb' => session('password_ib'),
             ...$this->options(),
         ]);
     }
@@ -174,18 +173,17 @@ class NasabahController extends Controller
     }
 
     /**
-     * Reset password Internet Banking: password sementara ditampilkan sekali ke petugas,
-     * nasabah wajib ganti password, dan semua sesinya dikeluarkan. Akun dibuat bila belum ada.
+     * Reset akun Internet Banking: akun dihapus (semua sesi berakhir), nasabah harus aktivasi ulang
+     * dengan NISN/No. nasabah + nomor rekening, lalu membuat No. HP & password baru.
      */
-    public function resetPasswordIb(Request $request, Nasabah $nasabah, AkunNasabahService $akun): RedirectResponse
+    public function resetAkunIb(Request $request, Nasabah $nasabah, AkunNasabahService $akun): RedirectResponse
     {
-        abort_unless($nasabah->is_active, 422, 'Nasabah tidak aktif.');
-
-        $password = $akun->resetOlehPetugas($nasabah, $request->user());
+        if (! $akun->resetAkun($nasabah, $request->user())) {
+            return back()->with('error', "{$nasabah->nama} belum mengaktivasi Internet Banking.");
+        }
 
         return redirect()->route('nasabah.show', $nasabah)
-            ->with('success', "Password Internet Banking {$nasabah->nama} direset.")
-            ->with('password_ib', $password);
+            ->with('success', "Akun Internet Banking {$nasabah->nama} direset. Nasabah perlu aktivasi ulang.");
     }
 
     /**
@@ -201,8 +199,8 @@ class NasabahController extends Controller
 
         return [
             'is_active' => $akun->is_active,
-            'wajib_ganti_password' => $akun->wajib_ganti_password,
-            'profil_lengkap' => $akun->profilLengkap(),
+            'no_hp' => $akun->no_hp,
+            'diaktivasi_at' => $akun->diaktivasi_at?->toIso8601String(),
             'login_terakhir' => $akun->riwayatLogin()->where('berhasil', true)->max('waktu'),
         ];
     }

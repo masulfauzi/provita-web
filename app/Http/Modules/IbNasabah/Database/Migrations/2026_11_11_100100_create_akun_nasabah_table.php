@@ -14,9 +14,11 @@ return new class extends Migration
         Schema::create('akun_nasabah', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('nasabah_id')->unique()->constrained('nasabah')->cascadeOnDelete();
+            // ID login, bentuk baku 08xxxxxxxxxx. Satu nomor hanya untuk satu akun.
+            $table->string('no_hp', 20)->unique();
             $table->string('password');
-            $table->boolean('wajib_ganti_password')->default(true);
-            $table->timestamp('profil_lengkap_at')->nullable();
+            // Akun dibuat sendiri oleh nasabah lewat aktivasi (NISN/No. nasabah + nomor rekening).
+            $table->timestamp('diaktivasi_at')->nullable();
             $table->timestamp('password_diganti_at')->nullable();
             // Naik saat password diganti/direset: sesi dengan versi lama dikeluarkan.
             $table->unsignedInteger('versi_sesi')->default(0);

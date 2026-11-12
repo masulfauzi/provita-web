@@ -19,29 +19,23 @@ class AuthNasabahController extends Controller
 {
     public const BATAS_GAGAL = 5;
 
-    public const PESAN_GAGAL = 'NIS atau password salah.';
+    public const PESAN_GAGAL = 'No. HP atau password salah.';
 
     public function __construct(protected AkunNasabahService $akun) {}
 
     /**
-     * Login dengan NIS, nomor nasabah, atau nomor rekening. Identitas tidak dikenal dan password
-     * salah dijawab dengan pesan yang sama. Maksimal 5 kali gagal per menit per NIS + IP.
+     * Login dengan No. HP (format 08…, 62…, atau +62…) + password. No. HP tidak dikenal dan password
+     * salah dijawab dengan pesan yang sama. Maksimal 5 kali gagal per menit per No. HP + IP.
      */
     public function login(Request $request): JsonResponse
     {
-        // Sesi & CSRF hanya ada untuk origin di SANCTUM_STATEFUL_DOMAINS (frontend IB).
-        if (! $request->hasSession()) {
-            return response()->json([
-                'message' => 'Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia).',
-            ], 419);
-        }
-
         $data = $request->validate([
-            'nis' => ['required', 'string', 'max:50'],
+            'no_hp' => ['required', 'string', 'max:30'],
             'password' => ['required', 'string', 'max:255'],
-        ], ['nis.required' => 'NIS / No. rekening wajib diisi.', 'password.required' => 'Password wajib diisi.']);
+        ], ['no_hp.required' => 'No. HP wajib diisi.', 'password.required' => 'Password wajib diisi.']);
 
-        $kunci = 'ib-login|'.Str::lower(trim($data['nis'])).'|'.$request->ip();
+        $noHp = $this->akun->normalisasiHp($data['no_hp']);
+        $kunci = 'ib-login|'.($noHp !== '' ? $noHp : Str::lower(trim($data['no_hp']))).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($kunci, self::BATAS_GAGAL)) {
             $detik = RateLimiter::availableIn($kunci);
@@ -52,7 +46,7 @@ class AuthNasabahController extends Controller
             ], 429, ['Retry-After' => (string) $detik]);
         }
 
-        $akun = $this->akun->cariAkun($data['nis']);
+        $akun = $this->akun->cariAkun($noHp);
 
         if (! $akun || ! $akun->bisaLogin() || ! Hash::check($data['password'], $akun->password)) {
             RateLimiter::hit($kunci, 60);
@@ -63,7 +57,7 @@ class AuthNasabahController extends Controller
 
             return response()->json([
                 'message' => self::PESAN_GAGAL,
-                'errors' => ['nis' => [self::PESAN_GAGAL]],
+                'errors' => ['no_hp' => [self::PESAN_GAGAL]],
                 'sisa_percobaan' => max(0, self::BATAS_GAGAL - RateLimiter::attempts($kunci)),
             ], 422);
         }

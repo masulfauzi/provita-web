@@ -45,7 +45,7 @@ class ProfilResource extends JsonResource
             'kecamatan' => $n->kecamatan,
             'kota' => $n->kota,
             'kode_pos' => $n->kode_pos,
-            'no_hp' => $n->no_hp,
+            'no_hp' => $this->no_hp,
             'email' => $n->email,
             'wali_nama' => $n->nama_orang_tua,
             'wali_hubungan' => $n->wali_hubungan,

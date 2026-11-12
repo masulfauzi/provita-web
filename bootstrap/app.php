@@ -4,8 +4,8 @@ use App\Http\Middleware\AutentikasiNasabah;
 use App\Http\Middleware\GunakanSesiNasabah;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HeaderKeamanan;
-use App\Http\Middleware\PastikanOnboardingNasabah;
 use App\Http\Middleware\PastikanPerangkatTerdaftar;
+use App\Http\Middleware\WajibSesiNasabah;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -38,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [HeaderKeamanan::class]);
         $middleware->alias([
             'auth.nasabah' => AutentikasiNasabah::class,
-            'ib.onboarding' => PastikanOnboardingNasabah::class,
+            'ib.sesi' => WajibSesiNasabah::class,
         ]);
 
         $middleware->redirectGuestsTo('/login');

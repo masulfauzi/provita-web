@@ -12,11 +12,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Carbon;
 
 /**
- * Akun login Internet Banking nasabah (guard `nasabah`). Satu nasabah satu akun.
+ * Akun login Internet Banking nasabah (guard `nasabah`). Satu nasabah satu akun, dibuat sendiri
+ * oleh nasabah lewat aktivasi; login dengan No. HP + password.
  *
  * @property string $nasabah_id
- * @property bool $wajib_ganti_password
- * @property Carbon|null $profil_lengkap_at
+ * @property string $no_hp
+ * @property Carbon|null $diaktivasi_at
  * @property int $versi_sesi
  * @property bool $is_active
  */
@@ -29,9 +30,9 @@ class AkunNasabah extends Authenticatable
 
     protected $fillable = [
         'nasabah_id',
+        'no_hp',
         'password',
-        'wajib_ganti_password',
-        'profil_lengkap_at',
+        'diaktivasi_at',
         'password_diganti_at',
         'is_active',
     ];
@@ -40,7 +41,6 @@ class AkunNasabah extends Authenticatable
 
     /** Sama dengan default kolom, agar model yang baru dibuat langsung punya nilainya. */
     protected $attributes = [
-        'wajib_ganti_password' => true,
         'versi_sesi' => 0,
         'is_active' => true,
     ];
@@ -49,8 +49,7 @@ class AkunNasabah extends Authenticatable
     {
         return [
             'password' => 'hashed',
-            'wajib_ganti_password' => 'boolean',
-            'profil_lengkap_at' => 'datetime',
+            'diaktivasi_at' => 'datetime',
             'password_diganti_at' => 'datetime',
             'versi_sesi' => 'integer',
             'is_active' => 'boolean',
@@ -76,11 +75,6 @@ class AkunNasabah extends Authenticatable
     public function riwayatLogin(): HasMany
     {
         return $this->hasMany(LoginNasabah::class);
-    }
-
-    public function profilLengkap(): bool
-    {
-        return $this->profil_lengkap_at !== null;
     }
 
     /**

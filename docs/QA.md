@@ -749,15 +749,16 @@ Pengujian sisi panel untuk akun Internet Banking nasabah dan isian alamat/wali b
 
 | ID | Skenario & langkah | Hasil yang diharapkan | Hasil | Catatan |
 | --- | --- | --- | --- | --- |
-| IBP-01 | Buka detail nasabah **Budi Santoso**. | Ada kartu **Internet Banking**: "Nasabah ini belum punya akun Internet Banking." dan tombol **Buat akun IB**. | | |
-| IBP-02 | Klik **Buat akun IB** → **Ya**. | "Password Internet Banking Budi Santoso direset." Muncul dialog **Password sementara**: nama, login (NIS), dan password 8 karakter (huruf kecil + angka). Tombol **Cetak slip** dan **Tutup**. | | |
-| IBP-03 | Tutup dialog, lalu muat ulang halaman. | Password tidak tampil lagi. Kartu Internet Banking: **Akun aktif**, **Wajib ganti password**, login terakhir "belum pernah". | | |
-| IBP-04 | Klik **Reset password IB** → **Ya**. | Password sementara baru (berbeda) tampil sekali. Bila nasabah sedang login di Internet Banking, sesinya berakhir. | | |
-| IBP-05 | Sebagai `admin1`, buka detail nasabah (atau ketik `POST` lewat alamat). | Tombol Reset password IB tidak tampil; permintaan langsung ditolak 403. | | |
-| IBP-06 | Buka **Log aktivitas**. | Ada "Password Internet Banking direset petugas" dengan nama petugas dan nasabah. | | |
+| IBP-01 | Buka detail nasabah siswa **Budi Santoso**. | Kartu **Internet Banking**: tag **Belum aktivasi** dan keterangan "Nasabah mengaktivasi sendiri … dengan **NISN** {NISN Budi} dan salah satu nomor rekeningnya, lalu login memakai No. HP." Tidak ada tombol reset. | | |
+| IBP-02 | Buka detail nasabah guru atau lembaga. | Keterangan aktivasi memakai **No. nasabah** (NSB-…), bukan NISN. | | |
+| IBP-03 | Aktivasi Budi lewat aplikasi IB (atau `/docs/api` → *Try it out*: `csrf-cookie` → `aktivasi/cek` dengan NISN + nomor rekening Budi → `aktivasi` dengan No. HP `081311112222`). Muat ulang detail Budi. | Kartu berubah: **Aktif**, No. HP login `081311112222`, tanggal diaktivasi hari ini, login terakhir "belum pernah". Tombol **Reset akun IB** muncul. | | |
+| IBP-04 | Klik **Reset akun IB** → **Ya, reset**. | "Akun Internet Banking Budi Santoso direset. Nasabah perlu aktivasi ulang." Kartu kembali **Belum aktivasi**. Bila Budi sedang login di IB, permintaan berikutnya ditolak (keluar). Login dengan `081311112222` gagal; aktivasi ulang dengan NISN + rekening berhasil. | | |
+| IBP-05 | Sebagai `admin1`, buka detail nasabah yang sudah aktivasi (atau kirim `POST /nasabah/{id}/reset-akun-ib`). | Tombol Reset akun IB tidak tampil; permintaan langsung ditolak 403. | | |
+| IBP-06 | Buka **Log aktivitas**. | Ada "Aktivasi Internet Banking" (penyebab akun nasabah) dan "Akun Internet Banking direset petugas (wajib aktivasi ulang)" dengan nama petugas. | | |
 | IBP-07 | Ubah nasabah **Budi**: bagian Kontak kini berisi Alamat (jalan), RT, RW, Kelurahan/desa, Kecamatan, Kota/kabupaten, Kode pos, Nama orang tua/wali, Hubungan, Nomor HP orang tua/wali. Isi `Jl. Melati 5`, RT `3`, RW `7`, `Karangkidul`, `Semarang Tengah`, `Kota Semarang`, `50136`, wali `Slamet` / Ayah / `081298765432`. Simpan. | "Data nasabah berhasil diperbarui." Detail menampilkan Alamat "Jl. Melati 5, RT 3/RW 7, Kel. Karangkidul, Kec. Semarang Tengah, Kota Semarang 50136" dan Orang tua/wali "Slamet (Ayah) 081298765432". | | |
 | IBP-08 | Ubah lagi: Kode pos `501`, RT `1234`. Simpan. | Ditolak dengan pesan di bawah Kode pos dan RT. | | |
 | IBP-09 | Buka nasabah hasil impor/lama yang hanya punya alamat satu baris, klik Ubah. | Isian Alamat (jalan) terisi alamat lama, sehingga tidak hilang saat disimpan. | | |
+| IBP-10 | Setelah Budi aktivasi, ubah **Nomor HP** Budi di form Ubah nasabah. | Data nasabah tersimpan, tetapi **No. HP login** di kartu Internet Banking tidak berubah (No. HP login hanya diganti nasabah dari menu profil IB atau lewat reset akun). | | |
 
 ---
 
@@ -792,8 +793,8 @@ Pengujian sisi panel untuk akun Internet Banking nasabah dan isian alamat/wali b
 | 25. Komputer terdaftar | 11 | | | |
 | 26. Pinjaman | 18 | | | |
 | 27. Impor data sistem lama | 11 | | | |
-| 28. Akun Internet Banking (panel) | 9 | | | |
-| **Total** | **317** | | | |
+| 28. Akun Internet Banking (panel) | 10 | | | |
+| **Total** | **318** | | | |
 
 **Daftar bug ditemukan**
 

@@ -84,3 +84,27 @@ function dariIb()
 {
     return test()->withHeaders(['Origin' => 'http://localhost:5173', 'Referer' => 'http://localhost:5173/']);
 }
+
+/**
+ * Isian data pribadi IB yang valid (PUT /nasabah/profil, POST /nasabah/aktivasi).
+ */
+function profilValid(array $ubah = []): array
+{
+    return [
+        'tempat_lahir' => 'Semarang',
+        'tanggal_lahir' => '2008-03-14',
+        'jenis_kelamin' => 'L',
+        'alamat_jalan' => 'Jl. Sidodadi Barat No. 8',
+        'rt' => '003',
+        'rw' => '005',
+        'kelurahan' => 'Karangkidul',
+        'kecamatan' => 'Semarang Tengah',
+        'kota' => 'Kota Semarang',
+        'kode_pos' => '50136',
+        'email' => 'rizky@example.com',
+        'wali_nama' => 'Slamet Riyadi',
+        'wali_hubungan' => 'ayah',
+        'wali_hp' => '081298765432',
+        ...$ubah,
+    ];
+}

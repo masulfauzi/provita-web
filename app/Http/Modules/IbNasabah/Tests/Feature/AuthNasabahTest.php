@@ -9,17 +9,11 @@ use App\Http\Modules\Rekening\Models\Rekening;
 beforeEach(function () {
     $this->nasabah = Nasabah::factory()->create(['nis' => '25041', 'nama' => 'Rizky Ramadhan', 'kelas' => 'XII TJKT 3']);
     $this->rekening = Rekening::factory()->create(['nasabah_id' => $this->nasabah->id, 'nomor' => '1100325041']);
-    $this->akun = AkunNasabah::factory()->create(['nasabah_id' => $this->nasabah->id]);
+    $this->akun = AkunNasabah::factory()->create(['nasabah_id' => $this->nasabah->id, 'no_hp' => '081234567890']);
 });
 
-it('login dengan NIS, nomor nasabah, atau nomor rekening', function (string $kolom) {
-    $identitas = match ($kolom) {
-        'nis' => '25041',
-        'nomor' => $this->nasabah->nomor,
-        'rekening' => '1100325041',
-    };
-
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => $identitas, 'password' => 'Provita2026'])
+it('login dengan No. HP dalam berbagai format', function (string $noHp) {
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => $noHp, 'password' => 'Provita2026'])
         ->assertOk()
         ->assertJsonPath('data.id', $this->nasabah->id)
         ->assertJsonPath('data.nis', '25041')
@@ -27,21 +21,25 @@ it('login dengan NIS, nomor nasabah, atau nomor rekening', function (string $kol
         ->assertJsonPath('data.kelas', 'XII TJKT 3')
         ->assertJsonPath('data.jenis_nasabah', 'siswa')
         ->assertJsonPath('data.nomor_rekening', ['1100325041'])
-        ->assertJsonPath('data.wajib_ganti_password', false)
-        ->assertJsonPath('data.profil_lengkap', true)
+        ->assertJsonPath('data.no_hp', '081234567890')
+        ->assertJsonMissingPath('data.wajib_ganti_password')
         ->assertJsonPath('data.login_terakhir', null);
 
     expect(LoginNasabah::where('akun_nasabah_id', $this->akun->id)->where('berhasil', true)->count())->toBe(1);
     $this->assertDatabaseHas('activity_log', ['log_name' => 'nasabah', 'event' => 'login', 'causer_id' => $this->akun->id]);
-})->with(['nis', 'nomor', 'rekening']);
+})->with(['081234567890', '6281234567890', '+62 812-3456-7890']);
+
+it('NIS, nomor nasabah, dan nomor rekening tidak bisa dipakai login', function (string $identitas) {
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => $identitas, 'password' => 'Provita2026'])->assertStatus(422);
+})->with(['25041', '1100325041']);
 
 it('pesan gagal sama untuk identitas tidak dikenal dan password salah', function () {
-    foreach ([['99999', 'Provita2026', 4], ['25041', 'salah123', 4]] as [$nis, $password, $sisa]) {
-        dariIb()->postJson('/api/v1/nasabah/login', ['nis' => $nis, 'password' => $password])
+    foreach ([['089999999999', 'Provita2026', 4], ['081234567890', 'salah123', 4]] as [$noHp, $password, $sisa]) {
+        dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => $noHp, 'password' => $password])
             ->assertStatus(422)
             ->assertExactJson([
-                'message' => 'NIS atau password salah.',
-                'errors' => ['nis' => ['NIS atau password salah.']],
+                'message' => 'No. HP atau password salah.',
+                'errors' => ['no_hp' => ['No. HP atau password salah.']],
                 'sisa_percobaan' => $sisa,
             ]);
     }
@@ -51,25 +49,26 @@ it('pesan gagal sama untuk identitas tidak dikenal dan password salah', function
 
 it('percobaan ke-6 dalam semenit ditolak 429 dengan Retry-After', function () {
     foreach (range(1, 5) as $i) {
-        dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'salah'])->assertStatus(422);
+        dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'salah'])->assertStatus(422);
     }
 
-    $respons = dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])->assertStatus(429);
+    $respons = dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])->assertStatus(429);
 
     expect((int) $respons->headers->get('Retry-After'))->toBeGreaterThan(0)->toBeLessThanOrEqual(60)
         ->and($respons->json('retry_after'))->toBeInt();
 
-    // NIS lain dari IP yang sama tidak ikut terkunci.
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '00000', 'password' => 'x'])->assertStatus(422);
+    // Format lain dari nomor yang sama tetap terkunci; nomor lain dari IP yang sama tidak.
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '+6281234567890', 'password' => 'Provita2026'])->assertStatus(429);
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '089999999999', 'password' => 'x'])->assertStatus(422);
 });
 
 it('akun atau nasabah nonaktif tidak bisa login', function () {
     $this->akun->update(['is_active' => false]);
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])->assertStatus(422);
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])->assertStatus(422);
 
     $this->akun->update(['is_active' => true]);
     $this->nasabah->update(['is_active' => false]);
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])->assertStatus(422);
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])->assertStatus(422);
 });
 
 it('me butuh login nasabah; login petugas tidak berlaku', function () {
@@ -82,7 +81,7 @@ it('me butuh login nasabah; login petugas tidak berlaku', function () {
 });
 
 it('akun nasabah tidak bisa membuka panel petugas', function () {
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])->assertOk();
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])->assertOk();
 
     expect(auth('nasabah')->check())->toBeTrue();
     $this->get('/dashboard')->assertRedirect('/login');
@@ -92,7 +91,7 @@ it('login_terakhir adalah login sebelum sesi ini', function () {
     LoginNasabah::create(['akun_nasabah_id' => $this->akun->id, 'waktu' => '2026-11-09 11:41:00', 'berhasil' => true, 'perangkat' => 'Chrome · Android']);
     LoginNasabah::create(['akun_nasabah_id' => $this->akun->id, 'waktu' => '2026-11-10 08:00:00', 'berhasil' => false]);
 
-    dariIb()->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])
+    dariIb()->postJson('/api/v1/nasabah/login', ['no_hp' => '081234567890', 'password' => 'Provita2026'])
         ->assertJsonPath('data.login_terakhir', '2026-11-09T11:41:00+07:00');
 });
 
@@ -120,9 +119,11 @@ it('membuat ringkasan perangkat dari user agent', function () {
 });
 
 it('request tanpa origin frontend (tanpa sesi) dijawab rapi, bukan 500', function () {
-    $this->postJson('/api/v1/nasabah/login', ['nis' => '25041', 'password' => 'Provita2026'])
-        ->assertStatus(419)
-        ->assertJson(['message' => 'Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia).']);
+    foreach (['/api/v1/nasabah/login', '/api/v1/nasabah/aktivasi/cek', '/api/v1/nasabah/aktivasi'] as $url) {
+        $this->postJson($url, ['no_hp' => '081234567890', 'password' => 'Provita2026'])
+            ->assertStatus(419)
+            ->assertExactJson(['message' => 'Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia).']);
+    }
 
     $this->getJson('/api/v1/nasabah/me')->assertUnauthorized()->assertExactJson(['message' => 'Unauthenticated.']);
     $this->getJson('/api/v1/nasabah/rekening')->assertUnauthorized();

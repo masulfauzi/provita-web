@@ -46,7 +46,7 @@ it('spesifikasi berformat OpenAPI 3.1 yang valid', function () {
 
     expect($spec['openapi'])->toBe('3.1.0')
         ->and($spec['info']['title'])->toBe('API Internet Banking Bank Provita')
-        ->and($spec['paths'])->toHaveCount(10);
+        ->and($spec['paths'])->toHaveCount(13);
 
     // Semua $ref menunjuk komponen yang ada.
     preg_match_all("/\\\$ref: '#\\/components\\/(\\w+)\\/(\\w+)'/", file_get_contents(base_path('docs/openapi/nasabah.yaml')), $ref, PREG_SET_ORDER);
@@ -68,7 +68,7 @@ it('setiap route Internet Banking terdokumentasi dan sebaliknya', function () {
         ->map(fn ($item) => preg_replace('#^(\w+) #', '$1 /', $item))
         ->sort()->values()->all();
 
-    expect($dokumentasi)->toBe($route)->toHaveCount(11);
+    expect($dokumentasi)->toBe($route)->toHaveCount(14);
 });
 
 it('field wajib di skema sama dengan respons API sungguhan', function () {
@@ -77,11 +77,17 @@ it('field wajib di skema sama dengan respons API sungguhan', function () {
     $nasabah = Nasabah::factory()->create();
     $akun = AkunNasabah::factory()->create(['nasabah_id' => $nasabah->id]);
     $rekening = Rekening::factory()->create(['nasabah_id' => $nasabah->id]);
+
+    $belumAktif = Nasabah::factory()->create();
+    $rekeningBaru = Rekening::factory()->create(['nasabah_id' => $belumAktif->id]);
     app(TransaksiService::class)->setor($rekening, 10000);
     $akun->riwayatLogin()->create(['waktu' => now(), 'berhasil' => true, 'perangkat' => 'Chrome · Android']);
 
     $kunci = fn (array $data) => collect(array_keys($data))->sort()->values()->all();
     $skema = fn (string $path, string $method = 'get') => $spec['paths'][$path][$method]['responses']['200']['content']['application/json']['schema']['properties'];
+
+    $cek = dariIb()->postJson('/api/v1/nasabah/aktivasi/cek', ['identitas' => $belumAktif->nisn, 'no_rekening' => $rekeningBaru->nomor])->assertOk()->json('data');
+    expect($kunci($cek))->toBe(fieldWajib($spec, ['$ref' => '#/components/schemas/HasilCekAktivasi']));
 
     $me = sebagaiNasabah($akun)->getJson('/api/v1/nasabah/me')->assertOk()->json('data');
     expect($kunci($me))->toBe(fieldWajib($spec, $skema('/nasabah/me')['data']));

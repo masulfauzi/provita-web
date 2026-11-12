@@ -1,23 +1,27 @@
 openapi: 3.1.0
 info:
   title: API Internet Banking Bank Provita
-  version: 1.0.0
+  version: 2.0.0
   description: |
     API **hanya baca** untuk aplikasi Internet Banking nasabah (`provita-ib`) Bank Mini SMKN 2 Semarang.
 
-    ## Alur wajib nasabah
-    `login` → `PUT /nasabah/password` (wajib, sekali) → `PUT /nasabah/profil` (wajib, sekali) → rekening & mutasi.
-    Selama langkah wajib belum selesai, endpoint lain menolak dengan **403** berkode
-    `WAJIB_GANTI_PASSWORD` (diperiksa lebih dulu) atau `WAJIB_LENGKAPI_DATA`.
+    ## Alur nasabah
+    1. **Aktivasi (sekali):** `POST /nasabah/aktivasi/cek` (NISN untuk siswa / No. nasabah untuk guru & lembaga
+       + nomor rekening) → `POST /nasabah/aktivasi` (data pribadi + No. HP + password). Tidak ada password dari teller.
+    2. **Login:** `POST /nasabah/login` dengan **No. HP + password**.
+    3. Rekening, mutasi, profil, ganti password, ganti No. HP.
+
+    Lupa password atau kehilangan No. HP: teller menekan **Reset akun IB**, lalu nasabah aktivasi ulang.
 
     ## Autentikasi (Laravel Sanctum mode SPA)
     1. `GET /sanctum/csrf-cookie` → server memasang cookie `XSRF-TOKEN` dan cookie sesi `provita_ib_session`.
     2. Setiap permintaan mengirim cookie (credentials `include`) dan header `X-XSRF-TOKEN` berisi nilai cookie `XSRF-TOKEN`
        (axios melakukannya otomatis dengan `withCredentials` + `withXSRFToken`).
-    3. `POST /nasabah/login`. Sesi berlaku 15 menit sejak aktivitas terakhir.
+    3. `POST /nasabah/aktivasi/cek`, `POST /nasabah/aktivasi`, atau `POST /nasabah/login`.
+       Sesi berlaku 15 menit sejak aktivitas terakhir; sesi aktivasi (antara cek dan simpan) 15 menit.
 
     Sesi hanya dibuat untuk origin yang terdaftar di `SANCTUM_STATEFUL_DOMAINS`. Permintaan dari origin lain
-    (mis. curl tanpa header `Origin`) dijawab `419` saat login dan `401` untuk endpoint lain.
+    (mis. curl tanpa header `Origin`) dijawab `419` untuk aktivasi/login dan `401` untuk endpoint lain.
     Agar **Try it out** di halaman ini bekerja, host API juga harus tercantum di `SANCTUM_STATEFUL_DOMAINS`.
 
     ## Konvensi
@@ -25,6 +29,7 @@ info:
     - ID berupa UUID. Waktu ISO 8601 dengan zona `+07:00`.
     - Rekening yang tidak ada **atau** milik nasabah lain selalu `404`.
     - Error validasi berformat Laravel: `{ message, errors: { field: [pesan] } }`.
+    - No. HP boleh dikirim `08…`, `62…`, atau `+62 …` (spasi/strip diabaikan); server selalu mengembalikan bentuk `08…`.
 servers:
   - url: /api/v1
     description: Server ini
@@ -34,10 +39,12 @@ servers:
       domain:
         default: bankprovita.sch.id
 tags:
+  - name: Aktivasi
+    description: Pendaftaran akun oleh nasabah sendiri (sekali), sebelum bisa login.
   - name: Autentikasi
-    description: CSRF, login, logout, data nasabah yang login, ganti password.
+    description: CSRF, login dengan No. HP, logout, data nasabah yang login, ganti password, ganti No. HP.
   - name: Profil
-    description: Data pribadi nasabah (wajib dilengkapi sekali).
+    description: Data pribadi nasabah.
   - name: Rekening
     description: Saldo, mutasi, ringkasan periode, dan PDF rekening koran.
 security:
@@ -60,14 +67,18 @@ paths:
               description: '`XSRF-TOKEN` (terbaca JavaScript) dan `provita_ib_session` (HttpOnly).'
               schema: { type: string }
 
-  /nasabah/login:
+  /nasabah/aktivasi/cek:
     post:
-      tags: [Autentikasi]
-      operationId: login
-      summary: Login nasabah
+      tags: [Aktivasi]
+      operationId: cekAktivasi
+      summary: 'Aktivasi langkah 1: verifikasi NISN / No. nasabah + nomor rekening'
       description: |
-        Kolom `nis` menerima **NIS, nomor nasabah, atau nomor rekening**. Identitas tidak dikenal, password salah,
-        maupun akun/nasabah nonaktif dijawab dengan pesan yang sama. Maksimal **5 kali gagal per menit per NIS + IP**.
+        - Siswa mengisi **NISN**; guru, karyawan, dan lembaga mengisi **No. nasabah** (`NSB-000123`, awalan `NSB-` boleh tidak ditulis).
+        - `no_rekening` boleh **salah satu** rekening milik nasabah yang belum ditutup.
+        - Data tidak cocok, rekening milik orang lain/ditutup, maupun nasabah nonaktif dijawab dengan pesan yang sama.
+          Maksimal **5 kali gagal per menit per identitas + IP**.
+        - Berhasil: server menyimpan status verifikasi di sesi selama 15 menit (`berlaku_sampai`).
+          Respons hanya berisi nama/kelas untuk konfirmasi, tanpa data pribadi lain.
       security:
         - xsrf: []
       requestBody:
@@ -76,9 +87,145 @@ paths:
           application/json:
             schema:
               type: object
-              required: [nis, password]
+              required: [identitas, no_rekening]
               properties:
-                nis: { type: string, maxLength: 50, description: NIS, nomor nasabah, atau nomor rekening., example: '25041' }
+                identitas: { type: string, maxLength: 50, description: NISN (siswa) atau No. nasabah (guru/karyawan/lembaga)., example: '0090025039' }
+                no_rekening: { type: string, maxLength: 50, example: '25039' }
+      responses:
+        '200':
+          description: Cocok. Lanjutkan ke `POST /nasabah/aktivasi` sebelum `berlaku_sampai`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/HasilCekAktivasi' }
+        '409':
+          description: Nasabah sudah punya akun. Arahkan ke halaman login.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorBerkode' }
+              example: { message: Akun sudah diaktivasi. Silakan masuk dengan No. HP dan password. Lupa password atau ganti No. HP? Hubungi teller., kode: SUDAH_AKTIVASI }
+        '419': { $ref: '#/components/responses/SesiTidakTersedia' }
+        '422':
+          description: Data tidak cocok (pesan selalu sama) atau isian kosong.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PercobaanGagal' }
+              example:
+                message: NISN/No. nasabah atau nomor rekening tidak cocok.
+                errors: { identitas: [NISN/No. nasabah atau nomor rekening tidak cocok.] }
+                sisa_percobaan: 4
+        '429':
+          description: Terlalu banyak percobaan gagal.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerlaluBanyak' }
+              example: { message: Terlalu banyak percobaan aktivasi. Coba lagi dalam 1 menit., retry_after: 45 }
+
+  /nasabah/aktivasi:
+    post:
+      tags: [Aktivasi]
+      operationId: aktivasi
+      summary: 'Aktivasi langkah 2: data pribadi + No. HP + password'
+      description: |
+        Hanya bisa dipanggil dalam **sesi yang sama** setelah `aktivasi/cek` berhasil dan sebelum `berlaku_sampai`.
+        Membuat akun dan menyimpan data pribadi. **Tidak otomatis login**: arahkan nasabah ke halaman login dengan
+        `data.no_hp` yang dikembalikan. Maksimal 10 permintaan per menit.
+
+        - `no_hp` menjadi **ID login**; satu No. HP hanya untuk satu akun.
+        - Aturan `password`: minimal 8 karakter; huruf **dan** angka; tidak sama dengan NIS, NISN, No. nasabah,
+          nomor rekening, maupun No. HP.
+        - Data wali wajib untuk siswa (`wajib_wali` dari langkah 1).
+      security:
+        - xsrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AktivasiInput' }
+      responses:
+        '201':
+          description: Akun dibuat.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, data]
+                properties:
+                  message: { type: string }
+                  data:
+                    type: object
+                    required: [no_hp]
+                    properties:
+                      no_hp: { type: string, example: '081311112222' }
+              example:
+                message: Aktivasi berhasil. Silakan masuk menggunakan No. HP dan password Anda.
+                data: { no_hp: '081311112222' }
+        '403':
+          description: Belum verifikasi langkah 1 di sesi ini, atau sudah lewat 15 menit. Kembali ke langkah 1.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorBerkode' }
+              example: { message: Sesi aktivasi tidak ditemukan atau sudah kedaluwarsa. Ulangi verifikasi NISN/No. nasabah dan nomor rekening., kode: VERIFIKASI_DIPERLUKAN }
+        '409':
+          description: Akun sudah dibuat (mis. dari tab lain).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorBerkode' }
+              example: { message: Akun sudah diaktivasi. Silakan masuk dengan No. HP dan password. Lupa password atau ganti No. HP? Hubungi teller., kode: SUDAH_AKTIVASI }
+        '419': { $ref: '#/components/responses/SesiTidakTersedia' }
+        '422':
+          description: Validasi gagal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidasiError' }
+              examples:
+                hpDipakai:
+                  summary: No. HP sudah dipakai akun lain
+                  value: { message: No. HP sudah dipakai akun lain., errors: { no_hp: [No. HP sudah dipakai akun lain.] } }
+                hpFormat:
+                  summary: Format No. HP
+                  value: { message: Format No. HP tidak valid., errors: { no_hp: [Format No. HP tidak valid.] } }
+                hpKonfirmasi:
+                  summary: Ulangi No. HP berbeda
+                  value: { message: Konfirmasi No. HP tidak sama., errors: { no_hp_confirmation: [Konfirmasi No. HP tidak sama.] } }
+                passwordIdentitas:
+                  summary: Password sama dengan identitas
+                  value: { message: Password tidak boleh sama dengan NIS/NISN, No. HP, atau nomor rekening., errors: { password: [Password tidak boleh sama dengan NIS/NISN, No. HP, atau nomor rekening.] } }
+                beberapa:
+                  summary: Beberapa field
+                  value:
+                    message: Kode pos berisi 5 angka. (and 2 more errors)
+                    errors:
+                      kode_pos: [Kode pos berisi 5 angka.]
+                      wali_nama: [Nama orang tua/wali wajib diisi.]
+                      persetujuan: [Persetujuan wajib dicentang.]
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/login:
+    post:
+      tags: [Autentikasi]
+      operationId: login
+      summary: Login nasabah
+      description: |
+        Login dengan **No. HP yang didaftarkan saat aktivasi** + password. NIS/NISN/nomor rekening tidak diterima.
+        No. HP tidak dikenal, password salah, maupun akun/nasabah nonaktif dijawab dengan pesan yang sama.
+        Maksimal **5 kali gagal per menit per No. HP + IP**.
+      security:
+        - xsrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [no_hp, password]
+              properties:
+                no_hp: { type: string, maxLength: 30, description: 'No. HP login; `08…`, `62…`, atau `+62…`.', example: '081234567890' }
                 password: { type: string, maxLength: 255, format: password, example: Provita2026 }
       responses:
         '200':
@@ -90,20 +237,15 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: '#/components/schemas/Me' }
-        '419':
-          description: Sesi/CSRF tidak tersedia (origin tidak stateful) atau token CSRF kedaluwarsa.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Pesan' }
-              example: { message: Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia). }
+        '419': { $ref: '#/components/responses/SesiTidakTersedia' }
         '422':
-          description: Identitas atau password salah (pesan selalu sama).
+          description: No. HP atau password salah (pesan selalu sama).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/LoginGagal' }
+              schema: { $ref: '#/components/schemas/PercobaanGagal' }
               example:
-                message: NIS atau password salah.
-                errors: { nis: [NIS atau password salah.] }
+                message: No. HP atau password salah.
+                errors: { no_hp: [No. HP atau password salah.] }
                 sisa_percobaan: 3
         '429':
           description: Terlalu banyak percobaan gagal.
@@ -119,8 +261,7 @@ paths:
       tags: [Autentikasi]
       operationId: logout
       summary: Keluar
-      description: Mengakhiri sesi dan membuat ulang token CSRF. Boleh dipanggil selama onboarding.
-      x-onboarding: boleh
+      description: Mengakhiri sesi dan membuat ulang token CSRF.
       responses:
         '204': { description: Sesi berakhir. }
         '401': { $ref: '#/components/responses/BelumLogin' }
@@ -131,11 +272,10 @@ paths:
       tags: [Autentikasi]
       operationId: me
       summary: Data nasabah yang login
-      description: Dipanggil frontend setiap aplikasi dibuka. Boleh dipanggil selama onboarding.
-      x-onboarding: boleh
+      description: Dipanggil frontend setiap aplikasi dibuka untuk memeriksa sesi.
       responses:
         '200':
-          description: Data nasabah dan status onboarding.
+          description: Data nasabah yang login.
           content:
             application/json:
               schema:
@@ -152,12 +292,11 @@ paths:
       operationId: gantiPassword
       summary: Ganti password
       description: |
-        Wajib sekali setelah login pertama atau setelah password direset petugas. Sukses: `wajib_ganti_password`
-        menjadi `false`, **sesi di perangkat lain dikeluarkan** (sesi ini tetap). Maksimal 10 permintaan per menit.
+        Ganti password dari menu profil. Sukses: **sesi di perangkat lain dikeluarkan** (sesi ini tetap).
+        Maksimal 10 permintaan per menit.
 
         Aturan `password`: minimal 8 karakter; mengandung huruf **dan** angka; tidak sama dengan password lama;
-        tidak sama dengan NIS, nomor nasabah, maupun nomor rekening milik nasabah.
-      x-onboarding: boleh
+        tidak sama dengan NIS, NISN, No. nasabah, nomor rekening, maupun No. HP.
       requestBody:
         required: true
         content:
@@ -196,11 +335,69 @@ paths:
                   summary: Sama dengan password lama
                   value: { message: Password baru tidak boleh sama dengan password lama., errors: { password: [Password baru tidak boleh sama dengan password lama.] } }
                 samaIdentitas:
-                  summary: Sama dengan NIS / nomor rekening
-                  value: { message: Password tidak boleh sama dengan NIS / nomor rekening., errors: { password: [Password tidak boleh sama dengan NIS / nomor rekening.] } }
+                  summary: Sama dengan identitas nasabah
+                  value: { message: Password tidak boleh sama dengan NIS/NISN, No. HP, atau nomor rekening., errors: { password: [Password tidak boleh sama dengan NIS/NISN, No. HP, atau nomor rekening.] } }
                 konfirmasi:
                   summary: Konfirmasi berbeda
                   value: { message: Konfirmasi password tidak sama., errors: { password_confirmation: [Konfirmasi password tidak sama.] } }
+        '429': { $ref: '#/components/responses/TerlaluBanyak' }
+
+  /nasabah/no-hp:
+    put:
+      tags: [Autentikasi]
+      operationId: gantiNoHp
+      summary: Ganti No. HP login
+      description: |
+        Mengganti No. HP yang dipakai login (konfirmasi dengan password saat ini). Sesi tetap berjalan;
+        login berikutnya memakai nomor baru. No. HP di data pribadi ikut berubah. Maksimal 10 permintaan per menit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, no_hp, no_hp_confirmation]
+              properties:
+                password: { type: string, format: password, description: Password saat ini., example: Provita2026 }
+                no_hp: { type: string, description: 'No. HP baru; `08…`, `62…`, atau `+62…`.', example: '085700001111' }
+                no_hp_confirmation: { type: string, description: Ulangi No. HP baru., example: '085700001111' }
+      responses:
+        '200':
+          description: No. HP diganti.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, data]
+                properties:
+                  message: { type: string }
+                  data:
+                    type: object
+                    required: [no_hp]
+                    properties:
+                      no_hp: { type: string }
+              example:
+                message: No. HP berhasil diganti. Gunakan No. HP baru untuk masuk berikutnya.
+                data: { no_hp: '085700001111' }
+        '401': { $ref: '#/components/responses/BelumLogin' }
+        '422':
+          description: Validasi gagal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidasiError' }
+              examples:
+                passwordSalah:
+                  summary: Password salah
+                  value: { message: Password saat ini salah., errors: { password: [Password saat ini salah.] } }
+                dipakai:
+                  summary: Dipakai akun lain
+                  value: { message: No. HP sudah dipakai akun lain., errors: { no_hp: [No. HP sudah dipakai akun lain.] } }
+                sama:
+                  summary: Sama dengan nomor sekarang
+                  value: { message: No. HP baru sama dengan No. HP sekarang., errors: { no_hp: [No. HP baru sama dengan No. HP sekarang.] } }
+                konfirmasi:
+                  summary: Ulangi No. HP berbeda
+                  value: { message: Konfirmasi No. HP tidak sama., errors: { no_hp_confirmation: [Konfirmasi No. HP tidak sama.] } }
         '429': { $ref: '#/components/responses/TerlaluBanyak' }
 
   /nasabah/profil:
@@ -208,8 +405,6 @@ paths:
       tags: [Profil]
       operationId: lihatProfil
       summary: Data pribadi + riwayat login
-      description: Boleh dipanggil setelah ganti password, walaupun data pribadi belum lengkap.
-      x-onboarding: setelah ganti password
       responses:
         '200':
           description: Data pribadi dan 10 login berhasil terbaru.
@@ -230,17 +425,15 @@ paths:
                             maxItems: 10
                             items: { $ref: '#/components/schemas/RiwayatLogin' }
         '401': { $ref: '#/components/responses/BelumLogin' }
-        '403': { $ref: '#/components/responses/WajibGantiPassword' }
         '429': { $ref: '#/components/responses/TerlaluBanyak' }
     put:
       tags: [Profil]
       operationId: simpanProfil
-      summary: Lengkapi / ubah data pribadi
+      summary: Ubah data pribadi
       description: |
-        Hanya field di skema `ProfilInput` yang disimpan; `nama`, `nis`, `kelas`, dan `jenis` **diabaikan** bila dikirim.
-        Data wali wajib untuk siswa, opsional untuk guru/karyawan/lembaga. Sukses menandai profil lengkap,
-        sehingga endpoint rekening terbuka.
-      x-onboarding: setelah ganti password
+        Hanya field di skema `ProfilInput` yang disimpan; `nama`, `nis`, `kelas`, `jenis`, dan **`no_hp`** diabaikan
+        bila dikirim (No. HP diganti lewat `PUT /nasabah/no-hp`). Data wali wajib untuk siswa, opsional untuk
+        guru/karyawan/lembaga.
       requestBody:
         required: true
         content:
@@ -257,7 +450,6 @@ paths:
                 properties:
                   data: { $ref: '#/components/schemas/Profil' }
         '401': { $ref: '#/components/responses/BelumLogin' }
-        '403': { $ref: '#/components/responses/WajibGantiPassword' }
         '422':
           description: Validasi gagal.
           content:
@@ -266,7 +458,7 @@ paths:
               example:
                 message: Format No. HP tidak valid. (and 2 more errors)
                 errors:
-                  no_hp: [Format No. HP tidak valid.]
+                  wali_hp: [Format No. HP tidak valid.]
                   kode_pos: [Kode pos berisi 5 angka.]
                   wali_nama: [Nama orang tua/wali wajib diisi.]
         '429': { $ref: '#/components/responses/TerlaluBanyak' }
@@ -277,7 +469,6 @@ paths:
       operationId: daftarRekening
       summary: Daftar rekening + saldo
       description: Semua rekening milik nasabah yang login, termasuk yang sudah ditutup (`status = ditutup`).
-      x-onboarding: tidak boleh
       responses:
         '200':
           description: Daftar rekening.
@@ -292,7 +483,6 @@ paths:
                     items: { $ref: '#/components/schemas/Rekening' }
                   meta: { $ref: '#/components/schemas/MetaSaldo' }
         '401': { $ref: '#/components/responses/BelumLogin' }
-        '403': { $ref: '#/components/responses/Onboarding' }
         '429': { $ref: '#/components/responses/TerlaluBanyak' }
 
   /nasabah/rekening/{id}:
@@ -300,7 +490,6 @@ paths:
       tags: [Rekening]
       operationId: detailRekening
       summary: Detail rekening
-      x-onboarding: tidak boleh
       parameters:
         - $ref: '#/components/parameters/IdRekening'
       responses:
@@ -315,7 +504,6 @@ paths:
                   data: { $ref: '#/components/schemas/Rekening' }
                   meta: { $ref: '#/components/schemas/MetaSaldo' }
         '401': { $ref: '#/components/responses/BelumLogin' }
-        '403': { $ref: '#/components/responses/Onboarding' }
         '404': { $ref: '#/components/responses/TidakDitemukan' }
         '429': { $ref: '#/components/responses/TerlaluBanyak' }
 
@@ -328,7 +516,6 @@ paths:
         Transaksi rekening (terbaru dulu) dalam periode, dipaginasi. **Ringkasan dihitung untuk seluruh periode**,
         tidak terpengaruh filter `jenis` maupun paginasi. `saldo_awal` = saldo setelah transaksi terakhir sebelum `dari`,
         atau saldo awal rekening (termasuk saldo migrasi sistem lama) bila belum ada transaksi.
-      x-onboarding: tidak boleh
       parameters:
         - $ref: '#/components/parameters/IdRekening'
         - $ref: '#/components/parameters/Dari'
@@ -358,7 +545,6 @@ paths:
                   meta: { $ref: '#/components/schemas/MetaMutasi' }
                   ringkasan: { $ref: '#/components/schemas/RingkasanMutasi' }
         '401': { $ref: '#/components/responses/BelumLogin' }
-        '403': { $ref: '#/components/responses/Onboarding' }
         '404': { $ref: '#/components/responses/TidakDitemukan' }
         '422': { $ref: '#/components/responses/RentangTidakValid' }
         '429': { $ref: '#/components/responses/TerlaluBanyak' }
@@ -371,7 +557,6 @@ paths:
       description: |
         Semua transaksi periode (tanpa filter `jenis`, tanpa paginasi) beserta ringkasan dan waktu cetak.
         Maksimal 10 unduhan per menit. Error tetap dikirim sebagai JSON walaupun yang diminta PDF.
-      x-onboarding: tidak boleh
       parameters:
         - $ref: '#/components/parameters/IdRekening'
         - $ref: '#/components/parameters/Dari'
@@ -390,7 +575,6 @@ paths:
             application/pdf:
               schema: { type: string, format: binary }
         '401': { $ref: '#/components/responses/BelumLogin' }
-        '403': { $ref: '#/components/responses/Onboarding' }
         '404': { $ref: '#/components/responses/TidakDitemukan' }
         '422': { $ref: '#/components/responses/RentangTidakValid' }
         '429': { $ref: '#/components/responses/TerlaluBanyak' }
@@ -438,24 +622,12 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Pesan' }
           example: { message: Unauthenticated. }
-    WajibGantiPassword:
-      description: Nasabah belum mengganti password awal/sementara.
+    SesiTidakTersedia:
+      description: Sesi/CSRF tidak tersedia (origin tidak stateful) atau token CSRF kedaluwarsa. Ambil ulang `/sanctum/csrf-cookie` lalu ulangi.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/OnboardingError' }
-          example: { message: Anda wajib mengganti password., kode: WAJIB_GANTI_PASSWORD }
-    Onboarding:
-      description: Langkah wajib belum selesai. `WAJIB_GANTI_PASSWORD` diperiksa lebih dulu.
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/OnboardingError' }
-          examples:
-            gantiPassword:
-              summary: Belum ganti password
-              value: { message: Anda wajib mengganti password., kode: WAJIB_GANTI_PASSWORD }
-            lengkapiData:
-              summary: Data pribadi belum lengkap
-              value: { message: Anda wajib melengkapi data pribadi., kode: WAJIB_LENGKAPI_DATA }
+          schema: { $ref: '#/components/schemas/Pesan' }
+          example: { message: Permintaan harus dari aplikasi Internet Banking (sesi/CSRF tidak tersedia). }
     TidakDitemukan:
       description: Rekening tidak ada **atau** bukan milik nasabah (keduanya 404).
       content:
@@ -478,7 +650,7 @@ components:
               summary: Format bukan Y-m-d
               value: { message: Format tanggal tidak valid., errors: { dari: [Format tanggal tidak valid.] } }
     TerlaluBanyak:
-      description: Batas permintaan terlampaui (60 per menit per akun; password & PDF 10 per menit).
+      description: Batas permintaan terlampaui (60 per menit per akun; aktivasi, password, No. HP & PDF 10 per menit).
       headers:
         Retry-After: { $ref: '#/components/headers/RetryAfter' }
       content:
@@ -510,7 +682,8 @@ components:
             type: array
             items: { type: string }
 
-    LoginGagal:
+    PercobaanGagal:
+      description: Login/aktivasi gagal, dengan sisa percobaan sebelum dikunci 1 menit.
       allOf:
         - $ref: '#/components/schemas/ValidasiError'
         - type: object
@@ -525,16 +698,39 @@ components:
         message: { type: string }
         retry_after: { type: integer, description: Detik. }
 
-    OnboardingError:
+    ErrorBerkode:
       type: object
       required: [message, kode]
       properties:
         message: { type: string }
-        kode: { type: string, enum: [WAJIB_GANTI_PASSWORD, WAJIB_LENGKAPI_DATA] }
+        kode: { type: string, enum: [SUDAH_AKTIVASI, VERIFIKASI_DIPERLUKAN] }
+
+    HasilCekAktivasi:
+      type: object
+      required: [nama, kelas, jenis_nasabah, wajib_wali, berlaku_sampai]
+      properties:
+        nama: { type: string, description: Tampilkan untuk konfirmasi "Apakah ini Anda?"., example: Ayu Lestari }
+        kelas: { type: [string, 'null'], example: X AKL 1 }
+        jenis_nasabah: { type: string, enum: [siswa, guru, karyawan, lembaga] }
+        wajib_wali: { type: boolean, description: True untuk siswa; data wali wajib di langkah 2. }
+        berlaku_sampai: { type: string, format: date-time, description: Batas waktu mengirim langkah 2., example: '2026-11-12T09:15:00+07:00' }
+
+    AktivasiInput:
+      description: Semua field `ProfilInput` ditambah No. HP, password, dan persetujuan.
+      allOf:
+        - $ref: '#/components/schemas/ProfilInput'
+        - type: object
+          required: [no_hp, no_hp_confirmation, password, password_confirmation, persetujuan]
+          properties:
+            no_hp: { type: string, description: 'Menjadi ID login; `08…`, `62…`, atau `+62…`. Setelah dinormalisasi harus `^08\d{8,11}$`.', example: '081311112222' }
+            no_hp_confirmation: { type: string, description: Ulangi No. HP., example: '081311112222' }
+            password: { type: string, format: password, minLength: 8, maxLength: 255, example: Ayu2026ok }
+            password_confirmation: { type: string, format: password, example: Ayu2026ok }
+            persetujuan: { type: boolean, const: true, description: Persetujuan penggunaan data (wajib dicentang). }
 
     Me:
       type: object
-      required: [id, nis, nama, nama_panggilan, kelas, jenis_nasabah, nomor_rekening, wajib_ganti_password, profil_lengkap, login_terakhir]
+      required: [id, nis, nama, nama_panggilan, kelas, jenis_nasabah, nomor_rekening, no_hp, login_terakhir]
       properties:
         id: { type: string, format: uuid, description: ID nasabah. }
         nis: { type: string, description: NIS; nomor nasabah untuk guru/karyawan/lembaga tanpa NIS., example: '25041' }
@@ -547,8 +743,7 @@ components:
           description: Nomor semua rekening milik nasabah (dipakai aturan password).
           items: { type: string }
           example: ['25041', '420088288425']
-        wajib_ganti_password: { type: boolean }
-        profil_lengkap: { type: boolean }
+        no_hp: { type: string, description: No. HP login., example: '081234567890' }
         login_terakhir:
           type: [string, 'null']
           format: date-time
@@ -573,7 +768,7 @@ components:
         kecamatan: { type: [string, 'null'], example: Semarang Tengah }
         kota: { type: [string, 'null'], example: Kota Semarang }
         kode_pos: { type: [string, 'null'], example: '50136' }
-        no_hp: { type: [string, 'null'], example: '081234567890' }
+        no_hp: { type: string, description: No. HP login (hanya baca; ganti lewat `PUT /nasabah/no-hp`)., example: '081234567890' }
         email: { type: [string, 'null'], format: email, example: rizky@example.com }
         wali_nama: { type: [string, 'null'], example: Slamet Riyadi }
         wali_hubungan: { type: [string, 'null'], enum: [ayah, ibu, wali, null] }
@@ -581,7 +776,7 @@ components:
 
     ProfilInput:
       type: object
-      required: [tempat_lahir, tanggal_lahir, jenis_kelamin, alamat_jalan, rt, rw, kelurahan, kecamatan, kota, kode_pos, no_hp, persetujuan]
+      required: [tempat_lahir, tanggal_lahir, jenis_kelamin, alamat_jalan, rt, rw, kelurahan, kecamatan, kota, kode_pos]
       description: '`wali_nama`, `wali_hubungan`, dan `wali_hp` **wajib bila nasabah siswa**.'
       properties:
         tempat_lahir: { type: string, maxLength: 100, example: Semarang }
@@ -594,12 +789,10 @@ components:
         kecamatan: { type: string, maxLength: 100, example: Semarang Tengah }
         kota: { type: string, maxLength: 100, example: Kota Semarang }
         kode_pos: { type: string, pattern: '^\d{5}$', example: '50136' }
-        no_hp: { type: string, pattern: '^08\d{8,11}$', example: '081234567890' }
         email: { type: [string, 'null'], format: email, example: rizky@example.com }
         wali_nama: { type: [string, 'null'], maxLength: 255, example: Slamet Riyadi }
         wali_hubungan: { type: [string, 'null'], enum: [ayah, ibu, wali, null] }
         wali_hp: { type: [string, 'null'], pattern: '^08\d{8,11}$', example: '081298765432' }
-        persetujuan: { type: boolean, const: true, description: Persetujuan penggunaan data (wajib dicentang). }
 
     RiwayatLogin:
       type: object

@@ -20,7 +20,6 @@ class PasswordNasabahController extends Controller
 
         $akun->forceFill([
             'password' => $request->validated('password'),
-            'wajib_ganti_password' => false,
             'password_diganti_at' => now(),
             'versi_sesi' => $akun->versi_sesi + 1,
         ])->save();
