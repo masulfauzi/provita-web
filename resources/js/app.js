@@ -60,6 +60,9 @@ createInertiaApp({
             .directive('tooltip', Tooltip)
             .mount(el);
     },
+    // Token CSRF panel ada di cookie sendiri; "XSRF-TOKEN" milik Internet Banking
+    // (lihat app/Http/Middleware/ValidasiCsrf.php).
+    http: { xsrfCookieName: 'XSRF-TOKEN-PANEL' },
     progress: {
         color: '#1d4ed8',
     },

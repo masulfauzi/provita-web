@@ -5,10 +5,12 @@ use App\Http\Middleware\GunakanSesiNasabah;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HeaderKeamanan;
 use App\Http\Middleware\PastikanPerangkatTerdaftar;
+use App\Http\Middleware\ValidasiCsrf;
 use App\Http\Middleware\WajibSesiNasabah;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Di hosting, HTTPS diterminasi oleh proxy (Cloudflare/panel); percayai header X-Forwarded-*
         // agar redirect & URL yang dibuat Laravel memakai https, bukan http.
         $middleware->trustProxies(at: '*');
+
+        // Cookie XSRF panel terpisah dari IB agar tidak saling menimpa (lihat ValidasiCsrf).
+        $middleware->web(replace: [ValidateCsrfToken::class => ValidasiCsrf::class]);
 
         $middleware->web(append: [
             PastikanPerangkatTerdaftar::class,
