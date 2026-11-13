@@ -100,9 +100,16 @@ watch(
 );
 
 const tanggalOptions = Array.from({ length: 28 }, (_, i) => ({ value: i + 1, label: `Tanggal ${i + 1}` }));
-const kaliMenuju = computed(() =>
-    form.target && form.nominal ? Math.ceil(Number(form.target) / Number(form.nominal)) : null,
-);
+// Target = saldo rekening tujuan yang ingin dicapai.
+const saldoTujuan = computed(() => {
+    const saldo = ubah.value ? props.autodebet.rekening?.saldo : tujuan.value?.saldo;
+    return saldo === undefined || saldo === null ? null : Number(saldo);
+});
+const kaliMenuju = computed(() => {
+    if (!form.target || !form.nominal || saldoTujuan.value === null) return null;
+    const kurang = Number(form.target) - saldoTujuan.value;
+    return kurang > 0 ? Math.ceil(kurang / Number(form.nominal)) : null;
+});
 
 function simpan() {
     const opsi = { preserveScroll: true, onSuccess: () => (visible.value = false) };
@@ -210,13 +217,15 @@ function simpan() {
             </div>
 
             <div class="flex flex-col gap-2">
-                <label for="target" class="font-medium">Target <span class="text-muted-color">(opsional)</span></label>
+                <label for="target" class="font-medium"
+                    >Target saldo <span class="text-muted-color">(opsional)</span></label
+                >
                 <MoneyInput v-model="form.target" input-id="target" :invalid="!!form.errors.target" fluid />
                 <small v-if="kaliMenuju" class="text-muted-color">
                     Tercapai sekitar {{ kaliMenuju }}× autodebet. Setelah target tercapai, autodebet berhenti otomatis.
                 </small>
-                <small v-if="ubah && autodebet.terkumpul > 0" class="text-muted-color">
-                    Sudah terkumpul <MoneyText :value="autodebet.terkumpul" />.
+                <small v-if="saldoTujuan !== null" class="text-muted-color">
+                    Saldo rekening tujuan yang ingin dicapai. Saldo saat ini <MoneyText :value="saldoTujuan" />.
                 </small>
                 <FieldError :message="form.errors.target" />
             </div>

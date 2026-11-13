@@ -117,9 +117,8 @@ function kirimKoreksi() {
                 <MoneyText :value="autodebet.item.nominal" />
                 {{ autodebet.item.periode === 'mingguan' ? 'tiap minggu' : `tiap tanggal ${autodebet.item.hari}` }}
             </span>
-            <span class="text-muted-color">
-                terkumpul <MoneyText :value="autodebet.item.terkumpul" />
-                <template v-if="autodebet.item.target"> / <MoneyText :value="autodebet.item.target" /></template>
+            <span v-if="autodebet.item.target" class="text-muted-color">
+                target saldo <MoneyText :value="autodebet.item.target" />
             </span>
             <Tag
                 :value="{ aktif: 'Aktif', berhenti: 'Dihentikan', selesai: 'Target tercapai' }[autodebet.item.status]"

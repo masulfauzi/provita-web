@@ -92,8 +92,11 @@ it('menolak tujuan rekening utama, tanpa sumber, target kecil, dan autodebet gan
     expect(fn () => buatAutodebet(['rekening_id' => $this->pelajar->id]))
         ->toThrow(ValidationException::class, 'Autodebet hanya untuk rekening aktif selain rekening utama (Tabungan Pelajar).');
 
-    expect(fn () => buatAutodebet(['target' => 10000]))
-        ->toThrow(ValidationException::class, 'Target minimal sama dengan nominal autodebet.');
+    // Target = saldo tujuan yang ingin dicapai: harus di atas saldo saat ini.
+    app(TransaksiService::class)->setor($this->tujuan, 30000);
+
+    expect(fn () => buatAutodebet(['target' => 30000]))
+        ->toThrow(ValidationException::class, 'Target harus lebih besar dari saldo rekening saat ini (Rp 30.000).');
 
     expect(fn () => buatAutodebet(['periode' => 'mingguan', 'hari' => 8]))
         ->toThrow(ValidationException::class, 'Pilih hari Senin s.d. Minggu.');
@@ -164,18 +167,47 @@ it('saldo kurang dicatat gagal lalu lanjut ke jadwal berikutnya', function () {
         ->and($autodebet->fresh())->terkumpul->toBe('60000.00')->jatuh_tempo->toDateString()->toBe('2026-11-16')->status->toBe('aktif');
 });
 
-it('berhenti otomatis saat target tercapai dengan debet terakhir sebesar sisa', function () {
-    $autodebet = buatAutodebet(['target' => 50000]);
+it('target adalah saldo rekening tujuan: berhenti saat saldo tercapai, debet terakhir sebesar sisa', function () {
+    app(TransaksiService::class)->setor($this->tujuan, 30000); // saldo awal tujuan ikut dihitung
+    $autodebet = buatAutodebet(['target' => 80000]);
 
     bukaSesiPada('2026-11-30');
 
     expect(AutodebetRiwayat::query()->orderBy('jadwal')->pluck('nominal')->all())->toBe(['20000.00', '20000.00', '10000.00'])
         ->and($autodebet->fresh())->terkumpul->toBe('50000.00')->status->toBe('selesai')
-        ->and($this->tujuan->fresh()->saldo)->toBe('50000.00');
+        ->and($this->tujuan->fresh()->saldo)->toBe('80000.00');
 
     bukaSesiPada('2026-12-07');
 
     expect(AutodebetRiwayat::count())->toBe(3);
+});
+
+it('setoran tunai ke rekening tujuan ikut dihitung; target tercapai tanpa debet', function () {
+    $autodebet = buatAutodebet(['target' => 50000]);
+
+    bukaSesiPada('2026-11-02'); // debet 20.000 → saldo 20.000
+    app(TransaksiService::class)->setor($this->tujuan, 35000); // saldo 55.000 ≥ target
+
+    bukaSesiPada('2026-11-09');
+
+    expect(AutodebetRiwayat::count())->toBe(1)
+        ->and($autodebet->fresh())->status->toBe('selesai')->terkumpul->toBe('20000.00')
+        ->and($this->tujuan->fresh()->saldo)->toBe('55000.00')
+        ->and($this->pelajar->fresh()->saldo)->toBe('80000.00');
+});
+
+it('target lebih kecil dari nominal diterima bila di atas saldo; ubah target dicek terhadap saldo', function () {
+    $autodebet = buatAutodebet(['target' => 15000]);
+
+    bukaSesiPada('2026-11-02');
+
+    expect(AutodebetRiwayat::sole()->nominal)->toBe('15000.00')
+        ->and($autodebet->fresh()->status)->toBe('selesai');
+
+    $lain = buatAutodebet(['target' => 40000]);
+
+    $this->actingAs($this->teller)->put("/autodebet/{$lain->id}", ['nominal' => 20000, 'periode' => 'mingguan', 'hari' => 1, 'target' => 15000])
+        ->assertSessionHasErrors(['target' => 'Target harus lebih besar dari saldo rekening saat ini (Rp 15.000).']);
 });
 
 it('autodebet yang dihentikan tidak diproses dan dilanjutkan tanpa menagih jadwal terlewat', function () {

@@ -20,8 +20,8 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property int $hari
  * @property Carbon $mulai
  * @property Carbon $jatuh_tempo
- * @property string|null $target
- * @property string $terkumpul
+ * @property string|null $target saldo rekening tujuan yang ingin dicapai (null = tanpa target)
+ * @property string $terkumpul total yang sudah dipindahkan autodebet (informasi)
  * @property string $status
  */
 class Autodebet extends Model

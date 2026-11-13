@@ -120,7 +120,7 @@ watch(filter, () => reload({ page: 1 }));
             </Column>
             <Column header="Target" style="min-width: 12rem">
                 <template #body="{ data }"
-                    ><ProgresTarget :terkumpul="data.terkumpul" :target="data.target"
+                    ><ProgresTarget :saldo="data.rekening?.saldo" :target="data.target" :terkumpul="data.terkumpul"
                 /></template>
             </Column>
             <Column header="Status">

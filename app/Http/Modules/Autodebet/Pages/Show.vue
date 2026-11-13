@@ -93,7 +93,11 @@ const lanjutkan = () => router.post(`/autodebet/${props.autodebet.id}/lanjutkan`
 
         <div class="card flex flex-col gap-3">
             <div class="text-sm text-muted-color">Target</div>
-            <ProgresTarget :terkumpul="autodebet.terkumpul" :target="autodebet.target" />
+            <ProgresTarget
+                :saldo="autodebet.rekening?.saldo"
+                :target="autodebet.target"
+                :terkumpul="autodebet.terkumpul"
+            />
             <div v-if="autodebet.status === 'selesai'" class="text-sm text-muted-color">
                 Target tercapai; autodebet berhenti otomatis.
             </div>

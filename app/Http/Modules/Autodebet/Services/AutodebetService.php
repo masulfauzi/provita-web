@@ -64,6 +64,7 @@ class AutodebetService
 
         $sumber = $this->sumber($tujuan, $data['sumber_rekening_id'] ?? null);
         [$nominal, $target] = $this->nominalTarget($data['nominal'], $data['target'] ?? null);
+        $this->pastikanTarget($target, $tujuan);
         $this->pastikanHari($data['periode'], (int) $data['hari']);
 
         $mulai = Carbon::parse($data['mulai'] ?? $this->pengaturan->tanggalTransaksi()->addDay())->startOfDay();
@@ -102,9 +103,7 @@ class AutodebetService
         [$nominal, $target] = $this->nominalTarget($data['nominal'], $data['target'] ?? null);
         $this->pastikanHari($data['periode'], (int) $data['hari']);
 
-        if ($target !== null && Money::compare($target, $autodebet->terkumpul) <= 0) {
-            throw ValidationException::withMessages(['target' => 'Target harus lebih besar dari yang sudah terkumpul ('.Money::format($autodebet->terkumpul).').']);
-        }
+        $this->pastikanTarget($target, $autodebet->rekening()->firstOrFail());
 
         $jadwalBerubah = $data['periode'] !== $autodebet->periode || (int) $data['hari'] !== $autodebet->hari;
 
@@ -183,9 +182,19 @@ class AutodebetService
             }
 
             $jadwal = $autodebet->jatuh_tempo->copy();
-            // Bila ada target, debet terakhir dibatasi sisa kekurangannya.
+            $tujuan = Rekening::findOrFail($autodebet->rekening_id);
+            // Target = saldo rekening tujuan yang ingin dicapai (setoran tunai ikut dihitung);
+            // debet terakhir dibatasi sisa kekurangannya.
             $nominal = Money::of($autodebet->nominal);
-            $sisa = $autodebet->target === null ? null : Money::sub($autodebet->target, $autodebet->terkumpul);
+            $sisa = $autodebet->target === null ? null : Money::sub($autodebet->target, $tujuan->saldo);
+
+            if ($sisa !== null && ! Money::isPositive($sisa)) {
+                // Saldo sudah mencapai target sebelum jadwal ini: selesai tanpa mendebet.
+                $autodebet->update(['status' => Autodebet::SELESAI]);
+                $hasil['selesai']++;
+
+                return false;
+            }
 
             if ($sisa !== null && Money::compare($sisa, $nominal) < 0) {
                 $nominal = $sisa;
@@ -200,16 +209,19 @@ class AutodebetService
                 return true;
             }
 
+            $saldoTujuan = null;
+
             try {
                 $pindah = $this->transaksi->pindahBuku(
                     Rekening::findOrFail($autodebet->sumber_rekening_id),
-                    Rekening::findOrFail($autodebet->rekening_id),
+                    $tujuan,
                     $nominal,
                     $user,
                 );
 
                 AutodebetRiwayat::create([...$riwayat, 'status' => AutodebetRiwayat::BERHASIL, 'transaksi_keluar_id' => $pindah['keluar']->id, 'transaksi_masuk_id' => $pindah['masuk']->id]);
                 $autodebet->terkumpul = Money::add($autodebet->terkumpul, $nominal);
+                $saldoTujuan = $pindah['masuk']->saldo_sesudah;
                 $hasil['berhasil']++;
                 $hasil['total'] = Money::add($hasil['total'], $nominal);
             } catch (TransaksiDitolakException $e) {
@@ -219,7 +231,7 @@ class AutodebetService
 
             $autodebet->jatuh_tempo = $this->jadwalBerikutnya($autodebet->periode, $autodebet->hari, $jadwal);
 
-            if ($autodebet->target !== null && Money::compare($autodebet->terkumpul, $autodebet->target) >= 0) {
+            if ($autodebet->target !== null && $saldoTujuan !== null && Money::compare($saldoTujuan, $autodebet->target) >= 0) {
                 $autodebet->status = Autodebet::SELESAI;
                 $hasil['selesai']++;
             }
@@ -280,6 +292,18 @@ class AutodebetService
     }
 
     /**
+     * Target adalah saldo rekening tujuan yang ingin dicapai, jadi harus di atas saldo saat ini.
+     *
+     * @throws ValidationException
+     */
+    protected function pastikanTarget(?string $target, Rekening $tujuan): void
+    {
+        if ($target !== null && Money::compare($target, $tujuan->saldo) <= 0) {
+            throw ValidationException::withMessages(['target' => 'Target harus lebih besar dari saldo rekening saat ini ('.Money::format($tujuan->saldo).').']);
+        }
+    }
+
+    /**
      * @return array{0: string, 1: string|null}
      *
      * @throws ValidationException
@@ -291,10 +315,6 @@ class AutodebetService
 
         if (! Money::isPositive($nominal)) {
             throw ValidationException::withMessages(['nominal' => 'Nominal autodebet harus lebih dari nol.']);
-        }
-
-        if ($target !== null && Money::compare($target, $nominal) < 0) {
-            throw ValidationException::withMessages(['target' => 'Target minimal sama dengan nominal autodebet.']);
         }
 
         return [$nominal, $target];
